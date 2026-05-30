@@ -1,0 +1,32 @@
+{
+  "name": "rpi-circuit-sim",
+  "version": "0.1.0",
+  "description": "Raspberry Pi 4 Emulator + Circuit Simulator for embedded systems education",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.0"
+  },
+  "build": {
+    "appId": "edu.embsys.rpi-circuit-sim",
+    "productName": "RPi Circuit Sim",
+    "directories": { "output": "dist" },
+    "files": ["src/**/*", "assets/**/*", "package.json"],
+    "win":   { "target": "nsis" },
+    "mac":   { "target": "dmg" },
+    "linux": { "target": "AppImage" }
+  },
+  "keywords": ["raspberry-pi", "circuit-simulator", "embedded-systems", "education"],
+  "license": "MIT"
+}
