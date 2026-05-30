@@ -5,7 +5,7 @@
 
 To run use command **path-to-electron\electron-v29.0.0-win32-x64\electron.exe . --dev** inside of terminal while in folder  
 >[!NOTE]
->Only tested in windows 10 environment as of current
+>Only tested in windows environment as of current
 
 
 again currently a work in proccess more features and clean up to come
