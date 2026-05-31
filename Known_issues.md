@@ -1,0 +1,1 @@
+due to latency in updates quick writes on and off can cause problems i.e. gpio 25 high followed immediatly by gpio 25 low might cause the high to be missed. As a current work arround providing a .02 second sleep is recomended for such cases.
