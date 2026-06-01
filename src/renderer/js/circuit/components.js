@@ -358,6 +358,363 @@ var GPIOPin = {
   },
 };
 
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BC547 — NPN BJT Transistor (TO-92: pin1=C, pin2=B, pin3=E)
+// Model: Ebers-Moll simplified — beta=200, VBE=0.66V
+// ══════════════════════════════════════════════════════════════════════════════
+var NPN_BJT = {
+  id: 'npn_bjt', label: 'BC547 NPN Transistor', width: 3, height: 4,
+  pins: [
+    { name: 'C', gx: 2, gy: 0 },  // Collector (top)
+    { name: 'B', gx: 0, gy: 2 },  // Base (left)
+    { name: 'E', gx: 2, gy: 4 },  // Emitter (bottom)
+  ],
+  defaults: { label: 'Q', beta: 200, vbe: 0.66, type: 'BC547' },
+  props: [
+    { key: 'label', label: 'Label', type: 'text' },
+    { key: 'beta',  label: 'hFE (β)', type: 'number', min: 10, max: 1000 },
+    { key: 'vbe',   label: 'VBE (V)', type: 'number', min: 0.4, max: 0.9 },
+    { key: 'type',  label: 'Type',    type: 'select', options: ['BC547','BC548','BC549'] },
+  ],
+  draw: function(ctx, comp) {
+    var x=comp.x, y=comp.y, g=GRID;
+    var cx=x+1.5*g, cy=y+2*g;
+    // Body circle
+    ctx.beginPath(); ctx.arc(cx, cy, g*1.1, 0, Math.PI*2);
+    ctx.fillStyle='#1a1f2e';
+    ctx.strokeStyle=comp.selected?'#4ade80':'#60a5fa';
+    ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+    // Base line (horizontal from left)
+    ctx.beginPath(); ctx.moveTo(x,cy); ctx.lineTo(cx-g*0.3,cy);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Vertical bar
+    ctx.beginPath(); ctx.moveTo(cx-g*0.3,cy-g*0.7); ctx.lineTo(cx-g*0.3,cy+g*0.7);
+    ctx.strokeStyle='#60a5fa'; ctx.lineWidth=2.5; ctx.stroke();
+    // Collector line (up-right with arrow feel)
+    ctx.beginPath(); ctx.moveTo(cx-g*0.3,cy-g*0.5); ctx.lineTo(cx+g*0.5,cy-g*1.2); ctx.lineTo(x+2*g,y);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Emitter line (down-right with arrow)
+    ctx.beginPath(); ctx.moveTo(cx-g*0.3,cy+g*0.5); ctx.lineTo(cx+g*0.5,cy+g*1.2); ctx.lineTo(x+2*g,y+4*g);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Emitter arrow
+    var ex1=cx+g*0.2, ey1=cy+g*0.9, ex2=cx+g*0.5, ey2=cy+g*1.2;
+    var ang=Math.atan2(ey2-ey1,ex2-ex1);
+    ctx.beginPath();
+    ctx.moveTo(ex2,ey2);
+    ctx.lineTo(ex2-g*0.25*Math.cos(ang-0.5),ey2-g*0.25*Math.sin(ang-0.5));
+    ctx.lineTo(ex2-g*0.25*Math.cos(ang+0.5),ey2-g*0.25*Math.sin(ang+0.5));
+    ctx.closePath(); ctx.fillStyle='#30363d'; ctx.fill();
+    // Pin labels
+    ctx.font='8px "JetBrains Mono",monospace'; ctx.fillStyle='#8b949e';
+    ctx.textAlign='center';
+    ctx.fillText('C',x+2*g+8,y+4); ctx.fillText('B',x-4,cy+3); ctx.fillText('E',x+2*g+8,y+4*g+2);
+    _label(ctx,(comp.props.label||'Q'),cx,cy+g*1.6);
+    _pin(ctx,x+2*g,y,comp.pins[0].connected);
+    _pin(ctx,x,cy,comp.pins[1].connected);
+    _pin(ctx,x+2*g,y+4*g,comp.pins[2].connected);
+  },
+  mnaStamp: function(comp, na, nb, G, I) {
+    // na=C(pin0), nb=B(pin1), nc=E(pin2) — but stamp2 only takes 2 nodes
+    // Full stamp handled in mnaStampFull
+  },
+  mnaStampFull: function(comp, G, Iv) {
+    var nc = comp.pins[0]._node; // Collector
+    var nb = comp.pins[1]._node; // Base
+    var ne = comp.pins[2]._node; // Emitter
+    var vbe_on = parseFloat(comp.props.vbe) || 0.66;
+    var beta   = parseFloat(comp.props.beta) || 200;
+    // Read current operating voltages
+    var Vb = comp.pins[1]._voltage || 0;
+    var Ve = comp.pins[2]._voltage || 0;
+    var Vbe = Vb - Ve;
+    var conducting = Vbe >= vbe_on * 0.8;
+    if (!conducting) {
+      // Cut-off: very high impedance — small leakage
+      var gleak = 1e-9;
+      if (nc>0) G[nc-1][nc-1]+=gleak;
+      if (ne>0) G[ne-1][ne-1]+=gleak;
+      if (nc>0&&ne>0){G[nc-1][ne-1]-=gleak;G[ne-1][nc-1]-=gleak;}
+      return;
+    }
+    // Active region: Ic = beta * Ib
+    // Model BE junction as diode (Shockley), CE as current-controlled current source
+    var Is=1e-14, nf=1.0, VT=0.02585;
+    var arg=Math.min(Vbe/(nf*VT),50);
+    var Ib=Is*(Math.exp(arg)-1);
+    var Ic=beta*Ib;
+    // Stamp BE diode
+    var Gbe=Is/(nf*VT)*Math.exp(arg);
+    var Ieq=Ib-Gbe*Vbe;
+    if(nb>0){G[nb-1][nb-1]+=Gbe;}
+    if(ne>0){G[ne-1][ne-1]+=Gbe;}
+    if(nb>0&&ne>0){G[nb-1][ne-1]-=Gbe;G[ne-1][nb-1]-=Gbe;}
+    if(nb>0) Iv[nb-1]-=Ieq;
+    if(ne>0) Iv[ne-1]+=Ieq;
+    // Stamp CE controlled current source: Ic flows from C to E
+    var Gce=1.0/20.0; // saturation resistance
+    if(nc>0){G[nc-1][nc-1]+=Gce;}
+    if(ne>0){G[ne-1][ne-1]+=Gce;}
+    if(nc>0&&ne>0){G[nc-1][ne-1]-=Gce;G[ne-1][nc-1]-=Gce;}
+    // Current source: beta*Ib from collector to emitter
+    if(nc>0) Iv[nc-1]+=Ic;
+    if(ne>0) Iv[ne-1]-=Ic;
+  },
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IRFZ34 — N-Channel MOSFET (TO-220: G, D, S)
+// Enhancement mode: conducts when VGS > VGS(th) ~2-4V
+// ══════════════════════════════════════════════════════════════════════════════
+var NMOS = {
+  id: 'nmos', label: 'IRFZ34 N-MOSFET', width: 3, height: 4,
+  pins: [
+    { name: 'D', gx: 2, gy: 0 },  // Drain (top)
+    { name: 'G', gx: 0, gy: 2 },  // Gate (left)
+    { name: 'S', gx: 2, gy: 4 },  // Source (bottom)
+  ],
+  defaults: { label: 'M', vth: 3.0, rds_on: 0.05, type: 'IRFZ34' },
+  props: [
+    { key: 'label',   label: 'Label',      type: 'text' },
+    { key: 'vth',     label: 'VGS(th) V',  type: 'number', min: 0.5, max: 6.0 },
+    { key: 'rds_on',  label: 'RDS(on) Ω',  type: 'number', min: 0.001, max: 100 },
+    { key: 'type',    label: 'Type',        type: 'select', options: ['IRFZ34'] },
+  ],
+  draw: function(ctx, comp) {
+    var x=comp.x, y=comp.y, g=GRID;
+    var cx=x+1.5*g, cy=y+2*g;
+    // Body circle
+    ctx.beginPath(); ctx.arc(cx,cy,g*1.1,0,Math.PI*2);
+    ctx.fillStyle='#1a1f2e';
+    ctx.strokeStyle=comp.selected?'#4ade80':'#22d3ee';
+    ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+    // Gate line
+    ctx.beginPath(); ctx.moveTo(x,cy); ctx.lineTo(cx-g*0.5,cy);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Gate plate
+    ctx.beginPath(); ctx.moveTo(cx-g*0.5,cy-g*0.8); ctx.lineTo(cx-g*0.5,cy+g*0.8);
+    ctx.strokeStyle='#22d3ee'; ctx.lineWidth=2.5; ctx.stroke();
+    // Channel body (3 lines for N-type)
+    var offset=g*0.15;
+    for(var i=-1;i<=1;i++){
+      ctx.beginPath();
+      ctx.moveTo(cx-g*0.2,cy+i*g*0.4-offset); ctx.lineTo(cx+g*0.3,cy+i*g*0.4-offset);
+      ctx.strokeStyle='#22d3ee'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    // Drain line (top)
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy-g*0.8); ctx.lineTo(cx+g*0.3,cy-g*0.4-offset);
+    ctx.moveTo(cx+g*0.3,cy-g*0.8); ctx.lineTo(x+2*g,y);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Source line with arrow (bottom)
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy+g*0.4+offset); ctx.lineTo(cx+g*0.3,cy+g*0.8);
+    ctx.moveTo(cx+g*0.3,cy+g*0.8); ctx.lineTo(x+2*g,y+4*g);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Arrow on source (N-type points inward toward channel)
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy+g*0.15);
+    ctx.lineTo(cx+g*0.3-g*0.2,cy-g*0.1); ctx.lineTo(cx+g*0.3+g*0.2,cy-g*0.1);
+    ctx.closePath(); ctx.fillStyle='#22d3ee'; ctx.fill();
+    // N label
+    ctx.font='bold 9px "JetBrains Mono",monospace'; ctx.fillStyle='#22d3ee'; ctx.textAlign='center';
+    ctx.fillText('N',cx,cy+g*1.55);
+    ctx.font='8px "JetBrains Mono",monospace'; ctx.fillStyle='#8b949e';
+    ctx.fillText('D',x+2*g+8,y+4); ctx.fillText('G',x-4,cy+3); ctx.fillText('S',x+2*g+8,y+4*g+2);
+    _label(ctx,(comp.props.label||'M'),cx-g*0.5,cy+g*1.55);
+    _pin(ctx,x+2*g,y,comp.pins[0].connected);
+    _pin(ctx,x,cy,comp.pins[1].connected);
+    _pin(ctx,x+2*g,y+4*g,comp.pins[2].connected);
+  },
+  mnaStampFull: function(comp, G, Iv) {
+    var nd=comp.pins[0]._node, ng=comp.pins[1]._node, ns=comp.pins[2]._node;
+    var Vg=comp.pins[1]._voltage||0, Vs=comp.pins[2]._voltage||0;
+    var Vgs=Vg-Vs;
+    var Vth=parseFloat(comp.props.vth)||3.0;
+    var Rds=parseFloat(comp.props.rds_on)||0.05;
+    // Enhancement N-MOSFET: conducts when Vgs > Vth
+    var gds = Vgs>Vth ? 1.0/Rds : 1e-9;
+    if(nd>0){G[nd-1][nd-1]+=gds;}
+    if(ns>0){G[ns-1][ns-1]+=gds;}
+    if(nd>0&&ns>0){G[nd-1][ns-1]-=gds;G[ns-1][nd-1]-=gds;}
+  },
+  mnaStamp: function() {},
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IRF4905 — P-Channel MOSFET (TO-220: G, D, S)
+// Enhancement mode: conducts when VGS < VGS(th) ~(-2 to -4V)
+// Note: Source tied to positive rail, Gate pulled LOW to turn on
+// ══════════════════════════════════════════════════════════════════════════════
+var PMOS = {
+  id: 'pmos', label: 'IRF4905 P-MOSFET', width: 3, height: 4,
+  pins: [
+    { name: 'D', gx: 2, gy: 0 },
+    { name: 'G', gx: 0, gy: 2 },
+    { name: 'S', gx: 2, gy: 4 },
+  ],
+  defaults: { label: 'M', vth: -3.0, rds_on: 0.02, type: 'IRF4905' },
+  props: [
+    { key: 'label',  label: 'Label',      type: 'text' },
+    { key: 'vth',    label: 'VGS(th) V',  type: 'number', min: -6.0, max: -0.5 },
+    { key: 'rds_on', label: 'RDS(on) Ω',  type: 'number', min: 0.001, max: 100 },
+    { key: 'type',   label: 'Type',        type: 'select', options: ['IRF4905'] },
+  ],
+  draw: function(ctx, comp) {
+    var x=comp.x, y=comp.y, g=GRID;
+    var cx=x+1.5*g, cy=y+2*g;
+    ctx.beginPath(); ctx.arc(cx,cy,g*1.1,0,Math.PI*2);
+    ctx.fillStyle='#1a1f2e';
+    ctx.strokeStyle=comp.selected?'#4ade80':'#f87171';
+    ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x,cy); ctx.lineTo(cx-g*0.5,cy);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx-g*0.5,cy-g*0.8); ctx.lineTo(cx-g*0.5,cy+g*0.8);
+    ctx.strokeStyle='#f87171'; ctx.lineWidth=2.5; ctx.stroke();
+    var offset=g*0.15;
+    for(var i=-1;i<=1;i++){
+      ctx.beginPath();
+      ctx.moveTo(cx-g*0.2,cy+i*g*0.4-offset); ctx.lineTo(cx+g*0.3,cy+i*g*0.4-offset);
+      ctx.strokeStyle='#f87171'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy-g*0.8); ctx.lineTo(cx+g*0.3,cy-g*0.4-offset);
+    ctx.moveTo(cx+g*0.3,cy-g*0.8); ctx.lineTo(x+2*g,y);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy+g*0.4+offset); ctx.lineTo(cx+g*0.3,cy+g*0.8);
+    ctx.moveTo(cx+g*0.3,cy+g*0.8); ctx.lineTo(x+2*g,y+4*g);
+    ctx.strokeStyle='#30363d'; ctx.lineWidth=1.5; ctx.stroke();
+    // Arrow points outward (P-type)
+    ctx.beginPath(); ctx.moveTo(cx+g*0.3,cy-g*0.15);
+    ctx.lineTo(cx+g*0.3-g*0.2,cy+g*0.1); ctx.lineTo(cx+g*0.3+g*0.2,cy+g*0.1);
+    ctx.closePath(); ctx.fillStyle='#f87171'; ctx.fill();
+    ctx.font='bold 9px "JetBrains Mono",monospace'; ctx.fillStyle='#f87171'; ctx.textAlign='center';
+    ctx.fillText('P',cx,cy+g*1.55);
+    ctx.font='8px "JetBrains Mono",monospace'; ctx.fillStyle='#8b949e';
+    ctx.fillText('D',x+2*g+8,y+4); ctx.fillText('G',x-4,cy+3); ctx.fillText('S',x+2*g+8,y+4*g+2);
+    _label(ctx,(comp.props.label||'M'),cx-g*0.5,cy+g*1.55);
+    _pin(ctx,x+2*g,y,comp.pins[0].connected);
+    _pin(ctx,x,cy,comp.pins[1].connected);
+    _pin(ctx,x+2*g,y+4*g,comp.pins[2].connected);
+  },
+  mnaStampFull: function(comp, G, Iv) {
+    var nd=comp.pins[0]._node, ng=comp.pins[1]._node, ns=comp.pins[2]._node;
+    var Vg=comp.pins[1]._voltage||0, Vs=comp.pins[2]._voltage||0;
+    var Vgs=Vg-Vs;
+    var Vth=parseFloat(comp.props.vth)||-3.0;
+    var Rds=parseFloat(comp.props.rds_on)||0.02;
+    // P-MOSFET conducts when Vgs < Vth (both negative)
+    var gds = Vgs<Vth ? 1.0/Rds : 1e-9;
+    if(nd>0){G[nd-1][nd-1]+=gds;}
+    if(ns>0){G[ns-1][ns-1]+=gds;}
+    if(nd>0&&ns>0){G[nd-1][ns-1]-=gds;G[ns-1][nd-1]-=gds;}
+  },
+  mnaStamp: function() {},
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LM741 — Operational Amplifier (8-pin DIP)
+// Pins: 1=OffNull, 2=Inv(-), 3=NonInv(+), 4=V-, 5=OffNull, 6=Out, 7=V+, 8=NC
+// Model: ideal op-amp with finite open-loop gain (200 V/mV = 200000)
+// ══════════════════════════════════════════════════════════════════════════════
+var OpAmp741 = {
+  id: 'opamp741', label: 'LM741 Op-Amp', width: 8, height: 8,
+  pins: [
+    { name: 'ON1', gx: 0, gy: 1 },  // pin1 Offset Null
+    { name: 'IN-', gx: 0, gy: 3 },  // pin2 Inverting input
+    { name: 'IN+', gx: 0, gy: 5 },  // pin3 Non-inverting input
+    { name: 'V-',  gx: 0, gy: 7 },  // pin4 Negative supply
+    { name: 'ON2', gx: 8, gy: 7 },  // pin5 Offset Null
+    { name: 'OUT', gx: 8, gy: 5 },  // pin6 Output
+    { name: 'V+',  gx: 8, gy: 3 },  // pin7 Positive supply
+    { name: 'NC',  gx: 8, gy: 1 },  // pin8 No connect
+  ],
+  defaults: { label: 'U', gain: 200000 },
+  props: [
+    { key: 'label', label: 'Label',          type: 'text' },
+    { key: 'gain',  label: 'Open-loop gain', type: 'number', min: 1000, max: 1000000 },
+  ],
+  draw: function(ctx, comp) {
+    var x=comp.x, y=comp.y, g=GRID;
+    var bx=x+g, by=y+g, bw=g*6, bh=g*6;
+    // Body triangle (op-amp symbol)
+    ctx.beginPath();
+    ctx.moveTo(bx, by); ctx.lineTo(bx, by+bh);
+    ctx.lineTo(bx+bw, by+bh/2); ctx.closePath();
+    ctx.fillStyle='#1a1f2e';
+    ctx.strokeStyle=comp.selected?'#4ade80':'#fbbf24';
+    ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+    // Labels inside triangle
+    ctx.font='bold 11px "JetBrains Mono",monospace';
+    ctx.fillStyle='#fbbf24'; ctx.textAlign='center';
+    ctx.fillText('−', bx+g*0.9, by+g*2.2);
+    ctx.fillText('+', bx+g*0.9, by+g*4.2);
+    ctx.font='8px "JetBrains Mono",monospace';
+    ctx.fillStyle='#8b949e';
+    ctx.fillText('LM741', bx+bw*0.42, by+bh/2+3);
+    ctx.fillText(comp.props.label||'U', bx+bw*0.42, by+bh/2+13);
+    // Pin wires
+    var pins_left  = [{name:'ON1',gy:1},{name:'IN-',gy:3},{name:'IN+',gy:5},{name:'V-',gy:7}];
+    var pins_right = [{name:'ON2',gy:7},{name:'OUT',gy:5},{name:'V+', gy:3},{name:'NC', gy:1}];
+    pins_left.forEach(function(p,i){
+      var py=y+p.gy*g;
+      ctx.beginPath(); ctx.moveTo(x,py); ctx.lineTo(bx,py);
+      ctx.strokeStyle='#30363d'; ctx.lineWidth=1; ctx.stroke();
+      ctx.font='7px "JetBrains Mono",monospace'; ctx.fillStyle='#4a5568'; ctx.textAlign='left';
+      ctx.fillText(p.name, bx+2, py+3);
+      _pin(ctx,x,py,comp.pins[i].connected);
+    });
+    pins_right.forEach(function(p,i){
+      var py=y+p.gy*g;
+      ctx.beginPath(); ctx.moveTo(x+8*g,py); ctx.lineTo(bx+bw,py);
+      ctx.strokeStyle='#30363d'; ctx.lineWidth=1; ctx.stroke();
+      ctx.font='7px "JetBrains Mono",monospace'; ctx.fillStyle=(p.name==='OUT')?'#4ade80':'#4a5568';
+      ctx.textAlign='right';
+      ctx.fillText(p.name, bx+bw-2, py+3);
+      _pin(ctx,x+8*g,py,comp.pins[4+i].connected);
+    });
+  },
+  mnaStampFull: function(comp, G, Iv) {
+    // Ideal op-amp model: Vout = A*(V+ - V-)
+    // Implemented as: VCVS (voltage-controlled voltage source)
+    // V_out = gain * (V_inp - V_inn)
+    // This is handled as a controlled source stamp
+    var nInv  = comp.pins[1]._node; // IN- (pin2)
+    var nNon  = comp.pins[2]._node; // IN+ (pin3)
+    var nVneg = comp.pins[3]._node; // V-  (pin4)
+    var nOut  = comp.pins[5]._node; // OUT (pin6)
+    var nVpos = comp.pins[6]._node; // V+  (pin7)
+
+    var Vp = comp.pins[2]._voltage || 0;
+    var Vm = comp.pins[1]._voltage || 0;
+    var Vcc = comp.pins[6]._voltage || 15;
+    var Vee = comp.pins[3]._voltage || -15;
+    var A = parseFloat(comp.props.gain) || 200000;
+
+    // Compute ideal output, clamp to supply rails
+    var Vout_ideal = A * (Vp - Vm);
+    var Vout = Math.max(Vee + 0.1, Math.min(Vcc - 0.1, Vout_ideal));
+
+    // Stamp output as a voltage source relative to V-
+    // Output drives Vout with low impedance (Rout = 75 ohm typical)
+    var Rout = 75;
+    if (nOut > 0) {
+      var gout = 1.0 / Rout;
+      G[nOut-1][nOut-1] += gout;
+      // Drive toward Vout
+      Iv[nOut-1] += gout * Vout;
+      // Return through V-
+      if (nVneg > 0) {
+        G[nVneg-1][nVneg-1] += gout;
+        G[nOut-1][nVneg-1]  -= gout;
+        G[nVneg-1][nOut-1]  -= gout;
+        Iv[nVneg-1] -= gout * Vout;
+      }
+    }
+    // High input impedance on inputs (1MΩ to GND)
+    var gin = 1.0 / 1e6;
+    if (nNon > 0) G[nNon-1][nNon-1] += gin;
+    if (nInv > 0) G[nInv-1][nInv-1] += gin;
+  },
+  mnaStamp: function() {},
+};
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 var COMPONENT_REGISTRY = {
   resistor:  Resistor,
@@ -564,7 +921,7 @@ var HC374 = {
     var ck   = (pins[10]._voltage || 0) > thresh;   // Clock
     var prev = comp._prevCK || 0;
 
-    // Rising edge detection
+    // Rising edge detection — also check _forcedEdge set by flushPending
     var risingEdge = ck && !prev;
 
     if (risingEdge) {
@@ -597,4 +954,173 @@ var HC374 = {
 
 // Register HC374
 COMPONENT_REGISTRY['hc374'] = HC374;
+window.Components.COMPONENT_REGISTRY = COMPONENT_REGISTRY;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 4x4 MATRIX KEYPAD
+// Pins: X1-X4 (rows, top→bottom), Y1-Y4 (cols, left→right)
+// When a key is pressed, its row pin connects to its col pin.
+// Layout:
+//   X1: 1  2  3  A
+//   X2: 4  5  6  B
+//   X3: 7  8  9  C
+//   X4: *  0  #  D
+// Pin positions: X pins on left side, Y pins on top
+// ══════════════════════════════════════════════════════════════════════════════
+var Keypad4x4 = {
+  id: 'keypad4x4',
+  label: '4x4 Matrix Keypad',
+  width: 10,
+  height: 12,
+  pins: [
+    // X pins (rows) on left side, evenly spaced down
+    { name: 'X1', gx: 0, gy: 3  },
+    { name: 'X2', gx: 0, gy: 5  },
+    { name: 'X3', gx: 0, gy: 7  },
+    { name: 'X4', gx: 0, gy: 9  },
+    // Y pins (cols) on right side, evenly spaced down
+    { name: 'Y1', gx: 10, gy: 3  },
+    { name: 'Y2', gx: 10, gy: 5  },
+    { name: 'Y3', gx: 10, gy: 7  },
+    { name: 'Y4', gx: 10, gy: 9  },
+  ],
+  // Button labels [row][col]
+  _keys: [
+    ['1','2','3','A'],
+    ['4','5','6','B'],
+    ['7','8','9','C'],
+    ['*','0','#','D'],
+  ],
+  // Which key is currently pressed: {row, col} or null
+  _pressed: null,
+
+  defaults: { label: 'KP1' },
+  props: [
+    { key: 'label', label: 'Label', type: 'text' },
+  ],
+
+  draw: function(ctx, comp) {
+    var x = comp.x, y = comp.y, g = GRID;
+    var self = Keypad4x4;
+
+    // Body
+    var bx = x + g, by = y + g;
+    var bw = g * 8, bh = g * 10;
+    ctx.fillStyle = '#1a1f2e';
+    ctx.strokeStyle = comp.selected ? '#4ade80' : '#4a5568';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6);
+    ctx.fill(); ctx.stroke();
+
+    // Title
+    ctx.font = 'bold 9px "JetBrains Mono",monospace';
+    ctx.fillStyle = '#8b949e';
+    ctx.textAlign = 'center';
+    ctx.fillText('4x4 KEYPAD', bx + bw/2, by + g * 0.75);
+    ctx.font = '8px "JetBrains Mono",monospace';
+    ctx.fillText(comp.props.label || 'KP1', bx + bw/2, by + g * 1.3);
+
+    // Grid of buttons
+    var gridX = bx + g * 0.6;
+    var gridY = by + g * 1.8;
+    var cellW = (bw - g * 1.2) / 4;
+    var cellH = (bh - g * 2.2) / 4;
+    var pressed = comp._pressed;
+
+    for (var row = 0; row < 4; row++) {
+      for (var col = 0; col < 4; col++) {
+        var btnX = gridX + col * cellW;
+        var btnY = gridY + row * cellH;
+        var bw2  = cellW - g * 0.25;
+        var bh2  = cellH - g * 0.25;
+        var key  = self._keys[row][col];
+        var isPressed = pressed && pressed.row === row && pressed.col === col;
+
+        // Button background
+        ctx.fillStyle = isPressed ? '#166534' : '#2d3748';
+        ctx.strokeStyle = isPressed ? '#4ade80' : '#4a5568';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.roundRect(btnX, btnY, bw2, bh2, 3);
+        ctx.fill(); ctx.stroke();
+
+        // Key label
+        ctx.font = 'bold 10px "JetBrains Mono",monospace';
+        ctx.fillStyle = isPressed ? '#4ade80' : '#e6edf3';
+        ctx.textAlign = 'center';
+        ctx.fillText(key, btnX + bw2/2, btnY + bh2/2 + 4);
+      }
+    }
+
+    // Pin wires and labels — X pins (left)
+    var xPinGYs = [3, 5, 7, 9];
+    for (var i = 0; i < 4; i++) {
+      var py = y + xPinGYs[i] * g;
+      ctx.beginPath(); ctx.moveTo(x, py); ctx.lineTo(bx, py);
+      ctx.strokeStyle = '#30363d'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = '8px "JetBrains Mono",monospace';
+      ctx.fillStyle = '#60a5fa'; ctx.textAlign = 'left';
+      ctx.fillText('X' + (i+1), bx + 3, py + 3);
+      _pin(ctx, x, py, comp.pins[i].connected);
+    }
+
+    // Y pins (right)
+    for (var j = 0; j < 4; j++) {
+      var py2 = y + xPinGYs[j] * g;
+      var px2 = x + 10 * g;
+      ctx.beginPath(); ctx.moveTo(px2, py2); ctx.lineTo(bx + bw, py2);
+      ctx.strokeStyle = '#30363d'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.font = '8px "JetBrains Mono",monospace';
+      ctx.fillStyle = '#fbbf24'; ctx.textAlign = 'right';
+      ctx.fillText('Y' + (j+1), bx + bw - 3, py2 + 3);
+      _pin(ctx, px2, py2, comp.pins[4 + j].connected);
+    }
+  },
+
+  // MNA: when a key is pressed, its X and Y pins are shorted together
+  mnaStamp: function(comp, na, nb, G) { /* handled per-key below */ },
+
+  // Called by canvas MNA loop — stamps active key connection
+  update: function(comp) {
+    // _pressed is set by canvas mouse handler (onDblClick or click)
+    // The actual MNA stamping happens in mnaStampKeypad below
+  },
+
+  // Called by MNA solver — stamp the pressed key as a near-short between X and Y
+  mnaStampFull: function(comp, G) {
+    if (!comp._pressed) return;
+    var row = comp._pressed.row;
+    var col = comp._pressed.col;
+    var xPin = comp.pins[row];       // X1-X4
+    var yPin = comp.pins[4 + col];   // Y1-Y4
+    var na = xPin._node || 0;
+    var nb = yPin._node || 0;
+    if (na === nb || na === 0 && nb === 0) return;
+    // Short the two pins with a very small resistance (10Ω — realistic contact resistance)
+    var g = 1 / 10.0;
+    if (na > 0) G[na-1][na-1] += g;
+    if (nb > 0) G[nb-1][nb-1] += g;
+    if (na > 0 && nb > 0) { G[na-1][nb-1] -= g; G[nb-1][na-1] -= g; }
+  },
+
+  // Toggle a key press — called by canvas on click inside keypad body
+  pressKey: function(comp, row, col) {
+    var releasing = comp._pressed && comp._pressed.row === row && comp._pressed.col === col;
+    comp._pressed = releasing ? null : { row: row, col: col };
+
+    // No GPIO injection needed — the MNA handles the keypad electrically.
+    // When a key is pressed, its X and Y pins are shorted (10Ω) in the MNA,
+    // so Python code scanning the rows/cols sees the correct voltage naturally.
+  },
+};
+
+// Register
+COMPONENT_REGISTRY['keypad4x4'] = Keypad4x4;
+window.Components.COMPONENT_REGISTRY = COMPONENT_REGISTRY;
+
+// Register new components
+COMPONENT_REGISTRY['npn_bjt']   = NPN_BJT;
+COMPONENT_REGISTRY['nmos']      = NMOS;
+COMPONENT_REGISTRY['pmos']      = PMOS;
+COMPONENT_REGISTRY['opamp741']  = OpAmp741;
 window.Components.COMPONENT_REGISTRY = COMPONENT_REGISTRY;

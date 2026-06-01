@@ -11,6 +11,7 @@ var _wires       = [];
 var _tool        = 'select';
 var _selectedIds = [];
 var _selectedWire = null;
+var _activeKeypad  = null;  // id of keypad currently being held
 var _dragging    = null;
 var _wiringFrom  = null;
 var _mousePos    = { x: 0, y: 0 };
@@ -93,16 +94,20 @@ function _drawWire(w) {
   var v = Math.max(va2, vb2);
   // Color: grey=0V, dim green=low, bright green=high
   var color;
-  if      (v > 4.0) color = '#fbbf24'; // amber = near 5V
+  if      (v > 4.0) color = '#3cff00ef'; // amber = near 5V
   else if (v > 2.8) color = '#4ade80'; // bright green = 3.3V range
   else if (v > 1.0) color = '#86efac'; // dim green = mid voltage
   else if (v > 0.1) color = '#22d3ee'; // cyan = low voltage
+  else if (v < -4.0) color = '#f10c0c'; // bright green = 3.3V range
+  else if (v < -2.8) color = '#ff9b05'; // bright green = 3.3V range
+  else if (v < -1.0) color = '#e69f07'; // dim green = mid voltage
+  else if (v < -0.1) color = '#ffee04'; // cyan = low voltage
   else              color = '#30363d'; // grey = 0V / unconnected
   _ctx.beginPath();
   _ctx.moveTo(a.x, a.y); _ctx.lineTo(b.x, a.y); _ctx.lineTo(b.x, b.y);
   _ctx.strokeStyle = w === _selectedWire ? '#fbbf24' : color;
   _ctx.lineWidth = 2; _ctx.stroke();
-  if (v > 0.01) {
+  if (v > 0.01 || v < -.01) {
     _ctx.font = '9px monospace'; _ctx.fillStyle = color; _ctx.textAlign = 'center';
     var mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     _ctx.fillText(v.toFixed(2)+'V', mx, my - 6);
@@ -139,6 +144,12 @@ function _drawPinHints(c) {
 function _runMNA() {
   if (_components.length === 0 || !window.MNA) return;
 
+  // Step 0: Flush ALL pending GPIO messages before solving.
+  // This ensures rapid back-to-back GPIO writes are never skipped.
+  if (window.PinMap && window.PinMap.flushPending) {
+    window.PinMap.flushPending();
+  }
+
   // Step 1: Update digital IC logic FIRST using previous frame voltages.
   // This sets _driven and _voltage on output pins before MNA runs,
   // so MNA can treat driven outputs as voltage sources.
@@ -159,15 +170,13 @@ function _runMNA() {
     if (c.connectedBCM != null) return; // GPIO-driven, skip
     var va = c.pins[0]._voltage || 0;
     var vb = c.pins[1]._voltage || 0;
-    // Shockley model: LED is lit when meaningful current flows
-    // Current = Is*(exp(Vd/(n*Vt))-1), significant above ~0.5mA
-    var color_led = c.props.color || 'red';
-    var n_led = parseFloat(c.props.n) || 1.8;
-    var Is_led = parseFloat(c.props.Is) || 4.303e-21;
+    // Piecewise model: LED lit when voltage across it exceeds 70% of Vf
+    var Vf_led = parseFloat(c.props.vf) || 2.0;
     var Vd = va - vb;
-    var Id = Is_led * (Math.exp(Math.min(Vd / (n_led * 0.02585), 50)) - 1);
-    c._lit = Id > 0.0005; // lit when >0.5mA flows
-    c._brightness = c._lit ? Math.min(1.0, Id / 0.02) : 0.0; // full bright at 20mA
+    c._lit = Vd >= Vf_led * 0.7;
+    // Brightness based on current: I = (Vd - Vf) / Ron, Ron=100
+    var I_led = c._lit ? Math.max(0, (Vd - Vf_led) / 100.0) : 0;
+    c._brightness = Math.min(1.0, I_led / 0.02); // full at 20mA
   });
 
   // Update 7-seg state from MNA pin voltages
@@ -185,6 +194,36 @@ function _runMNA() {
       c._segState[segName] = isCA ? !hi : hi;
     });
   });
+
+  // --- FIX: ADDED BLOCK ---
+  // Read simulated analog voltages and translate them to digital GPIO inputs
+  _components.forEach(function(c) {
+    if (c.type !== 'gpiopin') return;
+    
+    var bcm = parseInt(c.props.bcm);
+    if (isNaN(bcm)) return;
+
+    // Only process pins that Python has configured as an INput
+    if (c._gpioMode === 'IN') {
+      // Read the voltage solved by MNA (assuming 1.5V+ is a logic HIGH)
+      var simVolts = c.pins[0]._voltage || 0;
+      var simLogic = simVolts > 1.5 ? 1 : 0;
+
+      // If the logic level changed since the last frame, notify the Python backend
+      if (c._lastSimLogic !== simLogic) {
+        c._lastSimLogic = simLogic;
+        if (window.electronAPI && window.electronAPI.injectGPIO) {
+          window.electronAPI.injectGPIO({ 
+            type: 'gpio', 
+            action: 'inject', 
+            pin: bcm, 
+            value: simLogic 
+          });
+        }
+      }
+    }
+  });
+  // --- END FIX ---
 }
 
 // ── Mouse ─────────────────────────────────────────────────────────────────────
@@ -195,6 +234,16 @@ function _onMouseDown(e) {
     _selectedWire = null;
     var comp = _hitTest(pos);
     if (comp) {
+      // Check if click is on a keypad button
+      if (comp.type === 'keypad4x4') {
+        var kp = _getKeypadButton(comp, pos);
+        if (kp) {
+          // Press this button, store which keypad we pressed for mouseup release
+          comp._pressed = { row: kp.row, col: kp.col };
+          _activeKeypad = comp.id;
+          return; // don't start drag
+        }
+      }
       if (_selectedIds.indexOf(comp.id) < 0) _selectedIds = [comp.id];
       _dragging = { compId: comp.id, offX: pos.x - comp.x, offY: pos.y - comp.y };
       _showProps(comp);
@@ -235,6 +284,14 @@ function _onMouseMove(e) {
 
 function _onMouseUp(e) {
   _dragging = null;
+
+  // Release any held keypad button
+  if (_activeKeypad) {
+    var kc = _getComp(_activeKeypad);
+    if (kc) kc._pressed = null;
+    _activeKeypad = null;
+  }
+
   if (_wiringFrom && _tool === 'wire') {
     var pin = _pinHit(_cpos(e));
     if (pin && !(pin.compId === _wiringFrom.compId && pin.pinIdx === _wiringFrom.pinIdx)) {
@@ -458,6 +515,30 @@ function _addResizer(leftId, rightId) {
   });
 }
 
+// ── Keypad button hit test ────────────────────────────────────────────────────
+function _getKeypadButton(comp, pos) {
+  var x = comp.x, y = comp.y, g = window.Components.GRID;
+  var bx = x + g, by = y + g;
+  var bw = g * 8, bh = g * 10;
+  var gridX = bx + g * 0.6;
+  var gridY = by + g * 1.8;
+  var cellW = (bw - g * 1.2) / 4;
+  var cellH = (bh - g * 2.2) / 4;
+  for (var row = 0; row < 4; row++) {
+    for (var col = 0; col < 4; col++) {
+      var btnX = gridX + col * cellW;
+      var btnY = gridY + row * cellH;
+      var bw2  = cellW - g * 0.25;
+      var bh2  = cellH - g * 0.25;
+      if (pos.x >= btnX && pos.x <= btnX + bw2 &&
+          pos.y >= btnY && pos.y <= btnY + bh2) {
+        return { row: row, col: col };
+      }
+    }
+  }
+  return null;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function _cpos(e) { var r=_canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
 function _snap(v) { return Math.round(v/GRID)*GRID; }
@@ -493,3 +574,93 @@ window.CircuitCanvas = {
   getComponents:  function() { return _components; },
   getWires:       function() { return _wires; },
 };
+
+
+// ── Circuit save ──────────────────────────────────────────────────────────────
+function _saveCircuit() {
+  // Serialize components — save all user-facing props and positions
+  var compData = _components.map(function(c) {
+    return {
+      id:           c.id,
+      type:         c.type,
+      x:            c.x,
+      y:            c.y,
+      props:        JSON.parse(JSON.stringify(c.props)),
+      connectedBCM: c.connectedBCM,
+      connectedPins:c.connectedPins,
+      // IC state
+      _state:       c._state ? c._state.slice() : undefined,
+      _prevCK:      c._prevCK,
+      _ocLow:       c._ocLow,
+      // GPIO pin state
+      _gpioMode:    c._gpioMode,
+      _gpioValue:   c._gpioValue,
+      _gpioPWM:     c._gpioPWM,
+      _lastSimLogic:c._lastSimLogic,
+    };
+  });
+
+  // Serialize wires
+  var wireData = _wires.map(function(w) {
+    return {
+      id:   w.id,
+      from: { compId: w.from.compId, pinIdx: w.from.pinIdx },
+      to:   { compId: w.to.compId,   pinIdx: w.to.pinIdx   },
+    };
+  });
+
+  return { version: 1, components: compData, wires: wireData };
+}
+
+// ── Circuit load ──────────────────────────────────────────────────────────────
+function _loadCircuit(data) {
+  if (!data || !data.components) { console.error('Invalid circuit file'); return; }
+
+  _clearCanvas();
+
+  var reg = window.Components.COMPONENT_REGISTRY;
+
+  // Restore components
+  data.components.forEach(function(cd) {
+    var def = reg[cd.type];
+    if (!def) { console.warn('Unknown component type:', cd.type); return; }
+
+    var comp = window.Components.createComponent(cd.type, cd.x, cd.y);
+    // Preserve original ID so wire references still work
+    comp.id           = cd.id;
+    comp.props        = Object.assign(comp.props, cd.props || {});
+    comp.connectedBCM = cd.connectedBCM !== undefined ? cd.connectedBCM : null;
+    comp.connectedPins= cd.connectedPins || [];
+    if (cd._state)  comp._state  = cd._state.slice();
+    if (cd._prevCK     !== undefined) comp._prevCK     = cd._prevCK;
+    if (cd._ocLow      !== undefined) comp._ocLow      = cd._ocLow;
+    if (cd._gpioMode   !== undefined) comp._gpioMode   = cd._gpioMode;
+    if (cd._gpioValue  !== undefined) comp._gpioValue  = cd._gpioValue;
+    if (cd._gpioPWM    !== undefined) comp._gpioPWM    = cd._gpioPWM;
+    if (cd._lastSimLogic !== undefined) comp._lastSimLogic = cd._lastSimLogic;
+
+    _components.push(comp);
+  });
+
+  // Restore wires — reconnect using saved component IDs
+  data.wires.forEach(function(wd) {
+    var ca = _getComp(wd.from.compId);
+    var cb = _getComp(wd.to.compId);
+    if (!ca || !cb) { console.warn('Wire references missing component', wd); return; }
+    ca.pins[wd.from.pinIdx].connected = true;
+    cb.pins[wd.to.pinIdx].connected   = true;
+    _wires.push({
+      id:   wd.id,
+      from: { compId: wd.from.compId, pinIdx: wd.from.pinIdx },
+      to:   { compId: wd.to.compId,   pinIdx: wd.to.pinIdx   },
+      _voltage: 0,
+    });
+  });
+
+  console.log('[circuit] loaded:', _components.length, 'components,', _wires.length, 'wires');
+}
+
+// Expose on public API
+window.CircuitCanvas.saveCircuit = _saveCircuit;
+window.CircuitCanvas.loadCircuit = _loadCircuit;
+

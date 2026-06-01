@@ -20,6 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnStop = document.getElementById('btn-stop');
 
   btnOpen.addEventListener('click', openScript);
+  
+  var btnSaveCircuit = document.getElementById('btn-save-circuit');
+  var btnLoadCircuit = document.getElementById('btn-load-circuit');
+  if (btnSaveCircuit) btnSaveCircuit.addEventListener('click', saveCircuit);
+  if (btnLoadCircuit) btnLoadCircuit.addEventListener('click', loadCircuit);
+
+  
   btnRun.addEventListener('click',  runScript);
   btnStop.addEventListener('click', stopScript);
 
@@ -187,3 +194,31 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
 });
+
+  // ── Save circuit ────────────────────────────────────────────────────────────
+  async function saveCircuit() {
+    if (!window.CircuitCanvas) return;
+    var data = window.CircuitCanvas.saveCircuit();
+    var result = await window.electronAPI.saveCircuit(data);
+    if (result && result.ok) {
+      ConsoleUI.ok('Circuit saved: ' + result.filePath.split(/[\\/]/).pop());
+    }
+  }
+
+  // ── Load circuit ────────────────────────────────────────────────────────────
+  async function loadCircuit() {
+    if (!window.CircuitCanvas) return;
+    var result = await window.electronAPI.loadCircuit();
+    if (result) loadAndApplyCircuit(result);
+  }
+
+  function loadAndApplyCircuit(result) {
+    window.CircuitCanvas.loadCircuit(result.data);
+    ConsoleUI.ok('Circuit loaded: ' + result.filePath.split(/[\\/]/).pop());
+  }
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); saveCircuit(); }
+  });
+

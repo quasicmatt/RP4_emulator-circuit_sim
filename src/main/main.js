@@ -169,6 +169,29 @@ ipcMain.handle('script:open-dialog', async () => {
   return { filePath, content };
 });
 
+
+ipcMain.handle('circuit:save', async (_e, data) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: 'Save Circuit',
+    defaultPath: 'circuit.rpicirc',
+    filters: [{ name: 'RPi Circuit', extensions: ['rpicirc'] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false };
+  fs.writeFileSync(result.filePath, JSON.stringify(data, null, 2), 'utf8');
+  return { ok: true, filePath: result.filePath };
+});
+
+ipcMain.handle('circuit:load', async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: 'Open Circuit',
+    filters: [{ name: 'RPi Circuit', extensions: ['rpicirc'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || !result.filePaths.length) return null;
+  const raw = fs.readFileSync(result.filePaths[0], 'utf8');
+  return { filePath: result.filePaths[0], data: JSON.parse(raw) };
+});
+
 ipcMain.handle('gpio:inject', async (_e, msg) => {
   // Renderer telling Python that a GPIO input changed (e.g. switch pressed)
   sendToPython(msg);
@@ -201,6 +224,28 @@ function buildMenu() {
               mainWindow.webContents.send('menu:open-script', {
                 filePath: fp,
                 content: fs.readFileSync(fp, 'utf8'),
+              });
+            }
+          },
+        },
+        {
+          label: 'Save Circuit…',
+          accelerator: 'CmdOrCtrl+S',
+          click: () => mainWindow.webContents.send('menu:save'),
+        },
+        {
+          label: 'Open Circuit…',
+          accelerator: 'CmdOrCtrl+Shift+O',
+          click: async () => {
+            const result = await dialog.showOpenDialog(mainWindow, {
+              filters: [{ name: 'RPi Circuit', extensions: ['rpicirc'] }],
+              properties: ['openFile'],
+            });
+            if (!result.canceled && result.filePaths.length) {
+              const raw = fs.readFileSync(result.filePaths[0], 'utf8');
+              mainWindow.webContents.send('menu:load-circuit', {
+                filePath: result.filePaths[0],
+                data: JSON.parse(raw),
               });
             }
           },

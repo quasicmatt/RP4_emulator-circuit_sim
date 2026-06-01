@@ -24,6 +24,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMenuRun:          (cb) => ipcRenderer.on('menu:run',           ()      => cb()),
   onMenuStop:         (cb) => ipcRenderer.on('menu:stop',          ()      => cb()),
 
+  // ── Circuit save/load ────────────────────────────────────────────────────
+  saveCircuit:      (data) => ipcRenderer.invoke('circuit:save', data),
+  loadCircuit:      ()     => ipcRenderer.invoke('circuit:load'),
+  onMenuSave:       (cb)   => ipcRenderer.on('menu:save',         ()      => cb()),
+  onMenuLoadCircuit:(cb)   => ipcRenderer.on('menu:load-circuit', (_e, d) => cb(d)),
+
   // ── Cleanup ───────────────────────────────────────────────────────────────
   removeAllListeners: (channel) => ipcRenderer.removeAllListeners(channel),
 });

@@ -35,6 +35,23 @@
 <!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
 <div id="toolbar">
   <div class="toolbar-group">
+    <button id="btn-save-circuit" class="tb-btn" title="Save Circuit (Ctrl+S)">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/>
+        <polyline points="17 21 17 13 7 13 7 21"/>
+        <polyline points="7 3 7 8 15 8"/>
+      </svg>
+      Save
+    </button>
+      <button id="btn-load-circuit" class="tb-btn" title="Load Circuit">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+          <line x1="12" y1="11" x2="12" y2="17"/><polyline points="9 14 12 17 15 14"/>
+        </svg>
+        Load
+    </button>
+    <span class="tb-separator"></span>
+
     <button id="btn-open" class="tb-btn" title="Open .py file (Ctrl+O)">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1"/>
@@ -122,6 +139,11 @@
       <button class="comp-btn" data-component="sevenseg"  title="7-Segment Display">▦ 7-Seg</button>
       <button class="comp-btn" data-component="gpiopin" title="GPIO Pin">⬡ GPIO Pin</button>
       <button class="comp-btn" data-component="hc374" title="MM74HC374 Octal D Flip-Flop">◫ 74HC374</button>
+      <button class="comp-btn" data-component="keypad4x4" title="4x4 Matrix Keypad">⌨ Keypad</button>
+      <button class="comp-btn" data-component="npn_bjt" title="BC547 NPN Transistor">⊿ NPN BJT</button>
+      <button class="comp-btn" data-component="nmos" title="IRFZ34 N-Channel MOSFET">⊿ N-MOS</button>
+      <button class="comp-btn" data-component="pmos" title="IRF4905 P-Channel MOSFET">⊿ P-MOS</button>
+      <button class="comp-btn" data-component="opamp741" title="LM741 Op-Amp">△ LM741</button>
       <button class="comp-btn" data-component="vcc"       title="Power Rail">+ VCC</button>
       <button class="comp-btn" data-component="gnd"       title="Ground">⏚ GND</button>
     </div>

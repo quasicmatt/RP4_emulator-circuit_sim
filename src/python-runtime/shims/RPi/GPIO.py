@@ -110,7 +110,8 @@ def add_event_callback(pin, callback):
 def wait_for_edge(pin, edge, timeout=None, bouncetime=0):
     """Blocking wait — woken by inbound GPIO injection from circuit canvas."""
     event = threading.Event()
-    def _cb(p):
+    # FIX: Callback needs to accept the new 'value' argument to avoid TypeError
+    def _cb(p, v):
         event.set()
     _bridge.register_inbound(pin, _cb)
     fired = event.wait(timeout=timeout / 1000.0 if timeout else None)
@@ -132,12 +133,15 @@ def cleanup(pin=None):
             _send("cleanup", p)
 
 
-def _handle_inbound(pin):
+# FIX: Added 'value' to parameters to accept state from bridge.py
+def _handle_inbound(pin, value):
     """Called when Electron injects a GPIO state change (e.g. switch pressed)."""
-    new_val = 1 - _pin_state.get(pin, 0)
+    # FIX: Stop blindly toggling. Apply the actual simulator value directly.
+    new_val = value 
     _pin_state[pin] = new_val
     for edge, cb in _event_cbs.get(pin, []):
         if edge == BOTH or (edge == RISING and new_val) or (edge == FALLING and not new_val):
+            # Note: User's original Python callbacks still only expect a single 'pin' argument.
             threading.Thread(target=cb, args=(pin,), daemon=True).start()
 
 

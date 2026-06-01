@@ -147,33 +147,44 @@ MNASolver.prototype.solve = function(components, wires) {
         }
 
         case 'led': {
-          if (na === nb) break;
-          // Shockley model, linearized at current operating point
-          var color  = c.props.color || 'red';
-          var params = LED_PARAMS[color] || LED_PARAMS.red;
-          var Is_led = params.Is;
-          var n_led  = params.n;
-
-          // Current operating voltage across LED
-          var Va = c.pins[0]._voltage || 0;
-          var Vb = c.pins[1]._voltage || 0;
-          var Vd = Va - Vb;
-
-          // Clamp to prevent exp overflow
-          var arg = Math.min(Vd / (n_led * VT), 50);
-
-          // Shockley current and conductance at this operating point
-          var Id  = Is_led * (Math.exp(arg) - 1);
-          var Gd  = Is_led / (n_led * VT) * Math.exp(arg);
-
-          // Newton-Raphson companion: Geq=Gd, Ieq=Id-Gd*Vd (current source)
-          var Ieq = Id - Gd * Vd;
-
+         if (na === nb) break;
+          
+          // 1. Fetch properties and fall back to your LED_PARAMS table
+          var color = (c.props && c.props.color) ? c.props.color.toLowerCase() : 'red';
+          var p = LED_PARAMS[color] || LED_PARAMS.red;
+          var nVt = p.n * VT;
+          
+          // 2. Allow custom Vf override, otherwise calculate from params
+          var Vf_l = parseFloat(c.props.vf);
+          // If custom Vf exists, calculate the specific saturation current (Is) to reach 20mA at Vf
+          var Is = isNaN(Vf_l) ? p.Is : (0.02 / Math.exp(Vf_l / nVt));
+          
+          var Vd_l = (c.pins[0]._voltage || 0) - (c.pins[1]._voltage || 0);
+          
+          // 3. Clamp voltage to prevent Newton-Raphson exponential overflow
+          // This safely caps the math around the 100mA forward current mark
+          var max_Vd = nVt * Math.log(0.1 / Is); 
+          if (Vd_l > max_Vd) Vd_l = max_Vd;
+          if (Vd_l < -5) Vd_l = -5; // Clamp reverse voltage breakdown
+          
+          // 4. Shockley Diode Equation
+          var exp_term = Math.exp(Vd_l / nVt);
+          var Id = Is * (exp_term - 1);
+          
+          // Linearized conductance (Gd = dId / dVd)
+          var Gd = (Is / nVt) * exp_term;
+          
+          // Add 1 nano-mho to prevent singular matrix errors when the node is floating
+          Gd += 1e-9;
+          
+          // Norton equivalent current source for the passive model
+          var Ieq = Id - Gd * Vd_l;
+          
+          // 5. Stamp the matrix
           stamp2(na, nb, Gd);
-          // Companion current source: Ieq flows from na to nb (out of anode)
-          // This correctly represents the diode offset current
           if (na > 0) Iv[na-1] -= Ieq;
           if (nb > 0) Iv[nb-1] += Ieq;
+          
           break;
         }
 
@@ -185,6 +196,300 @@ MNASolver.prototype.solve = function(components, wires) {
 
         case 'capacitor':
           break; // DC open circuit
+        case 'keypad4x4': {
+          if (!c._pressed) break;
+          var xp = c.pins[c._pressed.row];
+          var yp = c.pins[4 + c._pressed.col];
+          var nkx = xp ? xp._node : 0;
+          var nky = yp ? yp._node : 0;
+          if (nkx === nky) break;
+          if (nkx === 0 && nky === 0) break;
+          var gk = 1.0 / 10.0;
+          if (nkx > 0) G[nkx-1][nkx-1] += gk;
+          if (nky > 0) G[nky-1][nky-1] += gk;
+          if (nkx > 0 && nky > 0) { G[nkx-1][nky-1] -= gk; G[nky-1][nkx-1] -= gk; }
+          break;
+        }
+
+        case 'npn_bjt': {
+          // BC547 NPN BJT — emitter follower model
+          // pins: 0=C(collector), 1=B(base), 2=E(emitter)
+          //
+          // Physics: Ve = Vb - Vbe (emitter follows base minus ~0.66V)
+          //
+          // MNA stamp (ON state):
+          //   Drive emitter to (Vb_prev - Vf) using Norton current source.
+          //   Vb_prev is the base voltage from the previous iteration.
+          //   This converges correctly because the NR loop runs 50 times.
+          //   Collector-Emitter: low resistance path (current flows C→E).
+          var nc_bjt = c.pins[0]._node;
+          var nb_bjt = c.pins[1]._node;
+          var ne_bjt = c.pins[2]._node;
+          var Vb_bjt = c.pins[1]._voltage || 0;
+          var Ve_bjt = c.pins[2]._voltage || 0;
+          var Vf_bjt = parseFloat(c.props.vbe) || 0.66;
+
+          // 100Mohm bleed on all pins to prevent floating
+          var g_bleed = 1.0 / 100e6;
+          if (nc_bjt > 0) G[nc_bjt-1][nc_bjt-1] += g_bleed;
+          if (nb_bjt > 0) G[nb_bjt-1][nb_bjt-1] += g_bleed;
+          if (ne_bjt > 0) G[ne_bjt-1][ne_bjt-1] += g_bleed;
+
+          var bjt_on = c.pins[1].connected && ((Vb_bjt - Ve_bjt) >= Vf_bjt * 0.8);
+          if (!bjt_on) break;
+
+          // ── ON: emitter follower ─────────────────────────────────────────
+          // Target emitter voltage from previous frame's base voltage
+          var Ve_target = Vb_bjt - Vf_bjt;
+
+          // Drive emitter to Ve_target with strong Norton source
+          // Geq large → emitter tightly controlled to Ve_target
+          // NR iterations converge Vb → correct value each frame
+          var Geq_e = 1.0 / 0.1; // 10 S — strong drive
+          if (ne_bjt > 0) {
+            G[ne_bjt-1][ne_bjt-1] += Geq_e;
+            Iv[ne_bjt-1] += Geq_e * Ve_target; // drive toward target
+          }
+
+          // Collector-Emitter: low resistance (BJT conducting)
+          // 0.2 ohm models Vce_sat realistically
+          var g_ce = 1.0 / 0.2;
+          if (nc_bjt > 0) G[nc_bjt-1][nc_bjt-1] += g_ce;
+          if (ne_bjt > 0) G[ne_bjt-1][ne_bjt-1] += g_ce;
+          if (nc_bjt > 0 && ne_bjt > 0) {
+            G[nc_bjt-1][ne_bjt-1] -= g_ce;
+            G[ne_bjt-1][nc_bjt-1] -= g_ce;
+          }
+          break;
+        }
+
+        case 'nmos': {
+          var nd = c.pins[0]._node;
+          var ng = c.pins[1]._node;
+          var ns = c.pins[2]._node;
+
+          var Vth = parseFloat(c.props.vth) || 3.0;
+          var Ron = parseFloat(c.props.rds_on) || 0.05;
+          
+          // 1. FIX Kp: Calculate true transconductance so it matches the requested Ron 
+          // Rds_on = 1 / (Kp * (Vgs - Vth)). Assuming a standard 5V logic drive for full saturation.
+          var driveVoltage = Math.max(1.0, 5.0 - Vth); 
+          var Kp = 1.0 / (Ron * driveVoltage);
+
+          var Vd = c.pins[0]._voltage || 0;
+          var Vg = c.pins[1]._voltage || 0;
+          var Vs = c.pins[2]._voltage || 0;
+
+          var Vgs = Vg - Vs;
+          var Vds = Vd - Vs;
+
+          // 2. FIX FLOATING GATE: Add a 1GΩ pull-down to Ground to prevent NaN solver explosions
+          if (ng > 0) G[ng-1][ng-1] += 1e-9;
+
+          if (Vgs < Vth) {
+            // Cutoff: add tiny conductance
+            stamp2(nd, ns, 1e-9);
+          } else {
+            if (Vds < Vgs - Vth) {
+              // Linear (Triode)
+              var gm = Kp * Vds;
+              var gds = Kp * (Vgs - Vth - Vds);
+              var Ids = Kp * ((Vgs - Vth) * Vds - 0.5 * Vds * Vds);
+              var Ieq = Ids - gm * Vgs - gds * Vds;
+              
+              stamp2(nd, ns, gds);
+              
+              // 3. FIX MATRIX INDEXING: Safely stamp gm (VCCS) preventing G[...][-1] array corruption
+              if (nd > 0) {
+                if (ng > 0) G[nd-1][ng-1] += gm;
+                if (ns > 0) G[nd-1][ns-1] -= gm;
+              }
+              if (ns > 0) {
+                if (ng > 0) G[ns-1][ng-1] -= gm;
+                if (ns > 0) G[ns-1][ns-1] += gm;
+              }
+
+              // Constant current part
+              if (nd > 0) Iv[nd-1] -= Ieq;
+              if (ns > 0) Iv[ns-1] += Ieq;
+
+            } else {
+              // Saturation
+              var Vov = Vgs - Vth;
+              var gm = Kp * Vov;
+              var gds = 1e-5; // Early effect conductance
+              var Ids = 0.5 * Kp * Vov * Vov;
+              var Ieq = Ids - gm * Vgs - gds * Vds;
+
+              stamp2(nd, ns, gds);
+              
+              // Safe gm VCCS
+              if (nd > 0) {
+                if (ng > 0) G[nd-1][ng-1] += gm;
+                if (ns > 0) G[nd-1][ns-1] -= gm;
+              }
+              if (ns > 0) {
+                if (ng > 0) G[ns-1][ng-1] -= gm;
+                if (ns > 0) G[ns-1][ns-1] += gm;
+              }
+
+              if (nd > 0) Iv[nd-1] -= Ieq;
+              if (ns > 0) Iv[ns-1] += Ieq;
+            }
+          }
+          break;
+        }
+
+        case 'pmos': {
+          var Vth = Math.abs(parseFloat(c.props.vth)) || 3.0; 
+          var Ron = parseFloat(c.props.rds_on) || 0.05;
+          
+          // Calculate transconductance
+          var driveVoltage = Math.max(1.0, 5.0 - Vth); 
+          var Kp = 1.0 / (Ron * driveVoltage);
+
+          // Get pin voltages
+          var Vd_pin = c.pins[0]._voltage || 0;
+          var Vg = c.pins[1]._voltage || 0;
+          var Vs_pin = c.pins[2]._voltage || 0;
+
+          // FIX THE CRASH: Dynamic Source/Drain Swapping
+          // If the PMOS is wired upside-down, or if the solver overshoots during a toggle, Vd can 
+          // exceed Vs. We simply swap their roles to keep Vsd positive and the solver stable!
+          var isReversed = Vd_pin > Vs_pin;
+          var Vs = isReversed ? Vd_pin : Vs_pin;
+          var Vd = isReversed ? Vs_pin : Vd_pin;
+          var ns = isReversed ? c.pins[0]._node : c.pins[2]._node;
+          var nd = isReversed ? c.pins[2]._node : c.pins[0]._node;
+          var ng = c.pins[1]._node;
+
+          var Vsg = Vs - Vg;
+          var Vsd = Vs - Vd;
+
+          // Floating gate protection (prevents NaN when gate is completely disconnected)
+          if (ng > 0) G[ng-1][ng-1] += 1e-9;
+
+          if (Vsg < Vth) {
+            // Cutoff
+            stamp2(nd, ns, 1e-9);
+          } else {
+            if (Vsd < Vsg - Vth) {
+              // Linear (Triode)
+              var gm = Kp * Vsd;
+              var gds = Kp * (Vsg - Vth - Vsd);
+              var Isd = Kp * ((Vsg - Vth) * Vsd - 0.5 * Vsd * Vsd);
+              var Ieq = Isd - gm * Vsg - gds * Vsd;
+              
+              stamp2(nd, ns, gds);
+              
+              if (ns > 0) {
+                if (ns > 0) G[ns-1][ns-1] += gm;
+                if (ng > 0) G[ns-1][ng-1] -= gm;
+              }
+              if (nd > 0) {
+                if (ns > 0) G[nd-1][ns-1] -= gm;
+                if (ng > 0) G[nd-1][ng-1] += gm;
+              }
+
+              if (ns > 0) Iv[ns-1] -= Ieq;
+              if (nd > 0) Iv[nd-1] += Ieq;
+
+            } else {
+              // Saturation
+              var Vov = Vsg - Vth;
+              var gm = Kp * Vov;
+              var gds = 1e-5; 
+              var Isd = 0.5 * Kp * Vov * Vov;
+              var Ieq = Isd - gm * Vsg - gds * Vsd;
+
+              stamp2(nd, ns, gds);
+              
+              if (ns > 0) {
+                if (ns > 0) G[ns-1][ns-1] += gm;
+                if (ng > 0) G[ns-1][ng-1] -= gm;
+              }
+              if (nd > 0) {
+                if (ns > 0) G[nd-1][ns-1] -= gm;
+                if (ng > 0) G[nd-1][ng-1] += gm;
+              }
+
+              if (ns > 0) Iv[ns-1] -= Ieq;
+              if (nd > 0) Iv[nd-1] += Ieq;
+            }
+          }
+          break;
+        }
+
+        case 'opamp741': {
+        var nInv  = c.pins[1]._node; // IN-
+          var nNon  = c.pins[2]._node; // IN+
+          var nVneg = c.pins[3]._node; // V-
+          var nOut  = c.pins[5]._node; // OUT
+          var nVpos = c.pins[6]._node; // V+
+
+          var Vinn = c.pins[1]._voltage || 0;
+          var Vinp = c.pins[2]._voltage || 0;
+          
+          // Read supply rail voltages directly from their nodes (default to 0V if grounded/unconnected)
+          var Vvp  = c.pins[6]._voltage || 0;
+          var Vvn  = c.pins[3]._voltage || 0;
+
+          var Vdiff = Vinp - Vinn;
+          var A = parseFloat(c.props.gain) || 200000;
+          
+          // 1. Calculate true rail midpoint and usable headroom swing
+          // A standard LM741 requires ~1V of internal headroom away from each rail.
+          var midV = (Vvp + Vvn) / 2.0;
+          var swing = (Vvp - Vvn) / 2.0 - 1.0; 
+
+          var A_eff = 0;
+
+          // 2. Only amplify if the rails actually have enough potential to power the device!
+          if (swing > 0) {
+            if (Math.abs(Vdiff) < 1e-9) {
+              A_eff = A; // Pure linear region near zero
+            } else {
+              // Smooth Tanh clipping bounded strictly by the live supply rails
+              var Vtarget = midV + swing * Math.tanh((A * Vdiff) / swing);
+              A_eff = (Vtarget - midV) / Vdiff; 
+            }
+          } else {
+            // Unpowered or dead state: internal gain drops to absolute zero
+            A_eff = 0;
+          }
+          
+          // 3. VCVS Matrix Stamping (Referenced strictly to GROUND)
+          var Gout = 1.0 / 75.0; // 75 ohm output impedance
+          var gm = A_eff * Gout;
+
+          if (nOut > 0) {
+            // Internal output resistance to GROUND
+            G[nOut-1][nOut-1] += Gout;
+            
+            // Transconductance (gm * Vdiff)
+            if (nNon > 0) G[nOut-1][nNon-1] -= gm;
+            if (nInv > 0) G[nOut-1][nInv-1] += gm;
+            
+            // Apply the rail midpoint offset (will equal 0V if rails are grounded)
+            Iv[nOut-1] += midV * Gout;
+          }
+
+          // 4. Parasitics to keep matrix stable if power pins are left physically floating
+          var g_bleed = 1e-9;
+          if (nVpos > 0) G[nVpos-1][nVpos-1] += g_bleed;
+          if (nVneg > 0) G[nVneg-1][nVneg-1] += g_bleed;
+          
+          // 5. High input impedance (2 MOhm differential)
+          var Gin = 1.0 / 2e6;
+          if (nNon > 0) G[nNon-1][nNon-1] += Gin;
+          if (nInv > 0) G[nInv-1][nInv-1] += Gin;
+          if (nNon > 0 && nInv > 0) {
+            G[nNon-1][nInv-1] -= Gin;
+            G[nInv-1][nNon-1] -= Gin;
+          }
+          break;
+        }
+
       }
     });
 
