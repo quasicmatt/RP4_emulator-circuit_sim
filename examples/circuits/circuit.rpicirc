@@ -1,0 +1,644 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "keypad4x4_1780197449529_wrya",
+      "type": "keypad4x4",
+      "x": 740,
+      "y": 240,
+      "props": {
+        "label": "KP1"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "gpiopin_1780197455952_jhfl",
+      "type": "gpiopin",
+      "x": 580,
+      "y": 340,
+      "props": {
+        "bcm": 2,
+        "label": "GPIO17"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "gnd_1780197602604_wwib",
+      "type": "gnd",
+      "x": 1220,
+      "y": 580,
+      "props": {},
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780197736216_dc9n",
+      "type": "vcc",
+      "x": 680,
+      "y": 220,
+      "props": {
+        "voltage": 5
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "npn_bjt_1780275530379_dbdn",
+      "type": "npn_bjt",
+      "x": 1000,
+      "y": 320,
+      "props": {
+        "label": "Q",
+        "beta": 200,
+        "vbe": 0.66,
+        "type": "BC547"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780275534030_k301",
+      "type": "resistor",
+      "x": 960,
+      "y": 520,
+      "props": {
+        "resistance": 1000,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780275537171_bi2n",
+      "type": "vcc",
+      "x": 1000,
+      "y": 180,
+      "props": {
+        "voltage": 5
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "opamp741_1780275800640_9j6j",
+      "type": "opamp741",
+      "x": 460,
+      "y": 760,
+      "props": {
+        "label": "U",
+        "gain": 200000
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780275809315_9hbj",
+      "type": "vcc",
+      "x": 340,
+      "y": 680,
+      "props": {
+        "voltage": 3.3
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780275809967_vjud",
+      "type": "vcc",
+      "x": 360,
+      "y": 880,
+      "props": {
+        "voltage": -15
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780275810369_q7m8",
+      "type": "vcc",
+      "x": 680,
+      "y": 720,
+      "props": {
+        "voltage": 15
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "gnd_1780275814992_eo61",
+      "type": "gnd",
+      "x": 520,
+      "y": 960,
+      "props": {},
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "gnd_1780275815163_cbr2",
+      "type": "gnd",
+      "x": 880,
+      "y": 1000,
+      "props": {},
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780275822153_1vfq",
+      "type": "resistor",
+      "x": 460,
+      "y": 680,
+      "props": {
+        "resistance": 1000000,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780275822345_c1pj",
+      "type": "resistor",
+      "x": 300,
+      "y": 800,
+      "props": {
+        "resistance": 0.1,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780275822537_nve8",
+      "type": "resistor",
+      "x": 720,
+      "y": 860,
+      "props": {
+        "resistance": 1000,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "led_1780391926971_ouv1",
+      "type": "led",
+      "x": 1100,
+      "y": 520,
+      "props": {
+        "color": "red",
+        "vf": 2,
+        "n": 3.73,
+        "Is": "9.32e-11",
+        "Rs": "0.042",
+        "label": "D"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_1780197462690",
+      "from": {
+        "compId": "gpiopin_1780197455952_jhfl",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "keypad4x4_1780197449529_wrya",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780197741027",
+      "from": {
+        "compId": "vcc_1780197736216_dc9n",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "keypad4x4_1780197449529_wrya",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780275549847",
+      "from": {
+        "compId": "keypad4x4_1780197449529_wrya",
+        "pinIdx": 7
+      },
+      "to": {
+        "compId": "npn_bjt_1780275530379_dbdn",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780275551829",
+      "from": {
+        "compId": "vcc_1780275537171_bi2n",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "npn_bjt_1780275530379_dbdn",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275559845",
+      "from": {
+        "compId": "npn_bjt_1780275530379_dbdn",
+        "pinIdx": 2
+      },
+      "to": {
+        "compId": "resistor_1780275534030_k301",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275832023",
+      "from": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 5
+      },
+      "to": {
+        "compId": "resistor_1780275822537_nve8",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275833871",
+      "from": {
+        "compId": "resistor_1780275822537_nve8",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "gnd_1780275815163_cbr2",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275838080",
+      "from": {
+        "compId": "gnd_1780275814992_eo61",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 2
+      }
+    },
+    {
+      "id": "w_1780275840190",
+      "from": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 4
+      },
+      "to": {
+        "compId": "gnd_1780275814992_eo61",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275842445",
+      "from": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 5
+      },
+      "to": {
+        "compId": "resistor_1780275822153_1vfq",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780275844253",
+      "from": {
+        "compId": "resistor_1780275822153_1vfq",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780275845433",
+      "from": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "resistor_1780275822345_c1pj",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780275847176",
+      "from": {
+        "compId": "vcc_1780275809315_9hbj",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "resistor_1780275822345_c1pj",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275852018",
+      "from": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 6
+      },
+      "to": {
+        "compId": "vcc_1780275810369_q7m8",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780275854562",
+      "from": {
+        "compId": "vcc_1780275809967_vjud",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "opamp741_1780275800640_9j6j",
+        "pinIdx": 3
+      }
+    },
+    {
+      "id": "w_1780391930070",
+      "from": {
+        "compId": "resistor_1780275534030_k301",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "led_1780391926971_ouv1",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780391932590",
+      "from": {
+        "compId": "led_1780391926971_ouv1",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "gnd_1780197602604_wwib",
+        "pinIdx": 0
+      }
+    }
+  ]
+}

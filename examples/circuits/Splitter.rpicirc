@@ -1,0 +1,540 @@
+{
+  "version": 1,
+  "components": [
+    {
+      "id": "resistor_1780392203897_yhtr",
+      "type": "resistor",
+      "x": 700,
+      "y": 520,
+      "props": {
+        "resistance": 680,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780392204104_01dc",
+      "type": "resistor",
+      "x": 820,
+      "y": 400,
+      "props": {
+        "resistance": 1100,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780392204299_zi6k",
+      "type": "resistor",
+      "x": 580,
+      "y": 680,
+      "props": {
+        "resistance": 1000,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780392204485_7wmw",
+      "type": "resistor",
+      "x": 1120,
+      "y": 520,
+      "props": {
+        "resistance": 3.3,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "nmos_1780392243992_tjs4",
+      "type": "nmos",
+      "x": 980,
+      "y": 500,
+      "props": {
+        "label": "M",
+        "vth": 3,
+        "rds_on": 0.05,
+        "type": "IRFZ34"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780392281915_4n00",
+      "type": "resistor",
+      "x": 1100,
+      "y": 660,
+      "props": {
+        "resistance": 0.1,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "gnd_1780392302603_jt1c",
+      "type": "gnd",
+      "x": 980,
+      "y": 840,
+      "props": {},
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "vcc_1780392308705_niyr",
+      "type": "vcc",
+      "x": 580,
+      "y": 380,
+      "props": {
+        "voltage": 24
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "switch_1780392398984_1f6r",
+      "type": "switch",
+      "x": 1220,
+      "y": 760,
+      "props": {
+        "closed": true,
+        "label": "SW",
+        "momentary": true
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "switch_1780392407014_57sb",
+      "type": "switch",
+      "x": 1200,
+      "y": 460,
+      "props": {
+        "closed": false,
+        "label": "SW",
+        "momentary": true
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "resistor_1780392554254_z0uw",
+      "type": "resistor",
+      "x": 1280,
+      "y": 560,
+      "props": {
+        "resistance": 1000,
+        "label": "R"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "pmos_1780392633080_3jq5",
+      "type": "pmos",
+      "x": 940,
+      "y": 680,
+      "props": {
+        "label": "M",
+        "vth": -3,
+        "rds_on": 0.02,
+        "type": "IRF4905"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    },
+    {
+      "id": "led_1780392708529_wjk5",
+      "type": "led",
+      "x": 1320,
+      "y": 620,
+      "props": {
+        "color": "red",
+        "vf": 2,
+        "n": 3.73,
+        "Is": "9.32e-11",
+        "Rs": "0.042",
+        "label": "D"
+      },
+      "connectedBCM": null,
+      "connectedPins": [],
+      "_state": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "_prevCK": 0,
+      "_ocLow": true,
+      "_gpioMode": "OUT",
+      "_gpioValue": 0,
+      "_gpioPWM": null
+    }
+  ],
+  "wires": [
+    {
+      "id": "w_1780392251285",
+      "from": {
+        "compId": "resistor_1780392203897_yhtr",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "nmos_1780392243992_tjs4",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780392300296",
+      "from": {
+        "compId": "resistor_1780392281915_4n00",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "resistor_1780392204485_7wmw",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780392315302",
+      "from": {
+        "compId": "resistor_1780392204104_01dc",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "vcc_1780392308705_niyr",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392384010",
+      "from": {
+        "compId": "resistor_1780392203897_yhtr",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "resistor_1780392204299_zi6k",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780392415339",
+      "from": {
+        "compId": "resistor_1780392204104_01dc",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "switch_1780392407014_57sb",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392517024",
+      "from": {
+        "compId": "resistor_1780392204104_01dc",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "resistor_1780392203897_yhtr",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780392566614",
+      "from": {
+        "compId": "resistor_1780392204485_7wmw",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "resistor_1780392554254_z0uw",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392641854",
+      "from": {
+        "compId": "pmos_1780392633080_3jq5",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "resistor_1780392281915_4n00",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392647833",
+      "from": {
+        "compId": "resistor_1780392204299_zi6k",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "pmos_1780392633080_3jq5",
+        "pinIdx": 2
+      }
+    },
+    {
+      "id": "w_1780392649807",
+      "from": {
+        "compId": "pmos_1780392633080_3jq5",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "resistor_1780392204299_zi6k",
+        "pinIdx": 1
+      }
+    },
+    {
+      "id": "w_1780392651343",
+      "from": {
+        "compId": "pmos_1780392633080_3jq5",
+        "pinIdx": 2
+      },
+      "to": {
+        "compId": "gnd_1780392302603_jt1c",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392657502",
+      "from": {
+        "compId": "pmos_1780392633080_3jq5",
+        "pinIdx": 2
+      },
+      "to": {
+        "compId": "switch_1780392398984_1f6r",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392673099",
+      "from": {
+        "compId": "nmos_1780392243992_tjs4",
+        "pinIdx": 2
+      },
+      "to": {
+        "compId": "resistor_1780392204485_7wmw",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392675226",
+      "from": {
+        "compId": "nmos_1780392243992_tjs4",
+        "pinIdx": 0
+      },
+      "to": {
+        "compId": "resistor_1780392204104_01dc",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392711238",
+      "from": {
+        "compId": "resistor_1780392554254_z0uw",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "led_1780392708529_wjk5",
+        "pinIdx": 0
+      }
+    },
+    {
+      "id": "w_1780392712587",
+      "from": {
+        "compId": "led_1780392708529_wjk5",
+        "pinIdx": 1
+      },
+      "to": {
+        "compId": "switch_1780392398984_1f6r",
+        "pinIdx": 1
+      }
+    }
+  ]
+}
