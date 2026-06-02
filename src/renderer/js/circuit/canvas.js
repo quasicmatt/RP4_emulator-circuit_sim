@@ -18,6 +18,16 @@ var _mousePos    = { x: 0, y: 0 };
 var _hoverComp   = null;
 var _hoverPin    = null;
 
+// ── Pan / zoom state ──────────────────────────────────────────────────────────
+var _panX    = 0;      // canvas pan offset X (pixels)
+var _panY    = 0;      // canvas pan offset Y (pixels)
+var _zoom    = 1.0;    // zoom scale factor
+var _panning = false;  // middle mouse button panning
+var _panStart = null;  // {x,y} mouse position when pan started
+var _panOrigin = null; // {x,y} panX/panY when pan started
+var MIN_ZOOM = 0.2;
+var MAX_ZOOM = 4.0;
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 function canvasInit() {
   _canvas = document.getElementById('circuit-canvas');
@@ -31,6 +41,10 @@ function canvasInit() {
   _canvas.addEventListener('mouseup',     _onMouseUp);
   _canvas.addEventListener('dblclick',    _onDblClick);
   _canvas.addEventListener('contextmenu', _onRightClick);
+  _canvas.addEventListener('wheel',        _onWheel, { passive: false });
+  // Reset view button
+  var btnReset = document.getElementById('btn-reset-view');
+  if (btnReset) btnReset.addEventListener('click', _resetView);
   window.addEventListener('keydown',      _onKeyDown);
 
   document.querySelectorAll('.tool-btn').forEach(function(btn) {
@@ -63,6 +77,9 @@ function _loop() {
 
 function _draw() {
   _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
+  _ctx.save();
+  _ctx.translate(_panX, _panY);
+  _ctx.scale(_zoom, _zoom);
   _drawGrid();
   _wires.forEach(function(w) { _drawWire(w); });
   if (_wiringFrom) _drawWirePreview();
@@ -73,6 +90,16 @@ function _draw() {
     if (_hoverComp && _hoverComp.id === c.id) _drawPinHints(c);
     _ctx.restore();
   });
+  _ctx.restore(); // end pan/zoom transform
+
+  // Zoom level indicator
+  if (_zoom !== 1.0) {
+    _ctx.font = '11px "JetBrains Mono",monospace';
+    _ctx.fillStyle = '#4a5568';
+    _ctx.textAlign = 'right';
+    _ctx.fillText(Math.round(_zoom * 100) + '%', _canvas.width - 8, _canvas.height - 8);
+  }
+
   var hint = document.getElementById('canvas-hint');
   if (hint) hint.classList.toggle('hidden', _components.length > 0);
 }
@@ -228,7 +255,34 @@ function _runMNA() {
 
 // ── Mouse ─────────────────────────────────────────────────────────────────────
 function _onMouseDown(e) {
+  // Middle mouse button → start panning
+  if (e.button === 1) {
+    e.preventDefault();
+    _panning    = true;
+    _panStart   = _rawPos(e);
+    _panOrigin  = { x: _panX, y: _panY };
+    _canvas.style.cursor = 'grabbing';
+    return;
+  }
+
   var pos = _cpos(e);
+
+  if (_tool === 'select') {
+    // In select mode, if mousedown lands on a pin → start wiring immediately
+    // This lets you drag wires without switching tools
+    var pinUnderCursor = _pinHit(pos);
+    if (pinUnderCursor) {
+      var c_pw = _getComp(pinUnderCursor.compId);
+      var pd_pw = c_pw.def.pins[pinUnderCursor.pinIdx];
+      _wiringFrom = {
+        compId: pinUnderCursor.compId,
+        pinIdx: pinUnderCursor.pinIdx,
+        x: c_pw.x + pd_pw.gx * GRID,
+        y: c_pw.y + pd_pw.gy * GRID,
+      };
+      return; // don't start component drag
+    }
+  }
 
   if (_tool === 'select') {
     _selectedWire = null;
@@ -272,6 +326,14 @@ function _onMouseDown(e) {
 }
 
 function _onMouseMove(e) {
+  // Pan with middle mouse
+  if (_panning && _panStart) {
+    var raw = _rawPos(e);
+    _panX = _panOrigin.x + (raw.x - _panStart.x);
+    _panY = _panOrigin.y + (raw.y - _panStart.y);
+    _canvas.style.cursor = 'grabbing';
+    return;
+  }
   _mousePos = _cpos(e);
   _hoverComp = _hitTest(_mousePos);
   _hoverPin  = _hoverComp ? _pinHit(_mousePos) : null;
@@ -283,6 +345,13 @@ function _onMouseMove(e) {
 }
 
 function _onMouseUp(e) {
+  if (_panning) {
+    _panning   = false;
+    _panStart  = null;
+    _panOrigin = null;
+    _canvas.style.cursor = 'default';
+    return;
+  }
   _dragging = null;
 
   // Release any held keypad button
@@ -292,12 +361,12 @@ function _onMouseUp(e) {
     _activeKeypad = null;
   }
 
-  if (_wiringFrom && _tool === 'wire') {
+  if (_wiringFrom) {
     var pin = _pinHit(_cpos(e));
     if (pin && !(pin.compId === _wiringFrom.compId && pin.pinIdx === _wiringFrom.pinIdx)) {
       _addWire(_wiringFrom, pin);
     }
-    _wiringFrom = null;
+    _wiringFrom = null;  // always cancel — works in both select and wire mode
   }
 }
 
@@ -312,11 +381,32 @@ function _onRightClick(e) {
   if (c) { _selectedIds = [c.id]; _showProps(c, _cpos(e)); }
 }
 
+function _onWheel(e) {
+  e.preventDefault();
+  var raw = _rawPos(e);
+  var delta = e.deltaY > 0 ? 0.9 : 1.1;
+  var newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, _zoom * delta));
+  // Zoom toward cursor position
+  var worldX = (raw.x - _panX) / _zoom;
+  var worldY = (raw.y - _panY) / _zoom;
+  _zoom = newZoom;
+  _panX = raw.x - worldX * _zoom;
+  _panY = raw.y - worldY * _zoom;
+}
+
+function _resetView() {
+  _panX = 0; _panY = 0; _zoom = 1.0;
+}
+
 function _onKeyDown(e) {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
   if (e.key === 'v' || e.key === 'V') _setTool('select');
   if (e.key === 'w' || e.key === 'W') _setTool('wire');
   if (e.key === 'Escape') { _wiringFrom = null; _setTool('select'); }
+  // Zoom shortcuts
+  if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); _zoom = Math.min(MAX_ZOOM, _zoom * 1.2); }
+  if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); _zoom = Math.max(MIN_ZOOM, _zoom / 1.2); }
+  if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); _resetView(); }
   if (e.key === 'Delete' || e.key === 'Backspace') {
     if (_selectedWire) {
       var wi = _wires.indexOf(_selectedWire);
@@ -457,12 +547,29 @@ function _showProps(comp, pos) {
   gs.onchange = function() { comp.connectedBCM = gs.value ? parseInt(gs.value) : null; };
   gr.appendChild(gl); gr.appendChild(gs); body.appendChild(gr);
 
-  // Position
+  // Position — convert world coords to screen coords accounting for pan/zoom
   var rect = document.getElementById('canvas-panel').getBoundingClientRect();
-  var px = pos ? (pos.x + rect.left) : (comp.x + comp.def.width*GRID + 30 + rect.left);
-  var py = pos ? (pos.y + rect.top)  : (comp.y + rect.top);
-  pop.style.left = Math.min(px, window.innerWidth  - 265) + 'px';
-  pop.style.top  = Math.min(py, window.innerHeight - 320) + 'px';
+  // World-to-screen: screenX = worldX * zoom + panX + canvasLeft
+  var canvasRect = _canvas.getBoundingClientRect();
+  function worldToScreen(wx, wy) {
+    return {
+      x: wx * _zoom + _panX + canvasRect.left,
+      y: wy * _zoom + _panY + canvasRect.top
+    };
+  }
+  var screenPos;
+  if (pos) {
+    // pos is already in world coords (from _cpos), convert to screen
+    screenPos = worldToScreen(pos.x, pos.y);
+  } else {
+    // Position popover to the right of the component
+    var rightEdge = comp.x + comp.def.width * GRID + 15;
+    screenPos = worldToScreen(rightEdge, comp.y);
+  }
+  var px = Math.min(screenPos.x, window.innerWidth  - 265);
+  var py = Math.min(Math.max(screenPos.y, 40), window.innerHeight - 320);
+  pop.style.left = px + 'px';
+  pop.style.top  = py + 'px';
   pop.classList.remove('hidden');
 }
 
@@ -540,7 +647,16 @@ function _getKeypadButton(comp, pos) {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-function _cpos(e) { var r=_canvas.getBoundingClientRect(); return {x:e.clientX-r.left,y:e.clientY-r.top}; }
+// Raw canvas position (screen space, before pan/zoom)
+function _rawPos(e) { var r=_canvas.getBoundingClientRect(); return {x:e.clientX-r.left, y:e.clientY-r.top}; }
+// World position (after removing pan/zoom transform)
+function _cpos(e) {
+  var r = _canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - r.left - _panX) / _zoom,
+    y: (e.clientY - r.top  - _panY) / _zoom
+  };
+}
 function _snap(v) { return Math.round(v/GRID)*GRID; }
 function _getComp(id) { for(var i=0;i<_components.length;i++){if(_components[i].id===id)return _components[i];} return null; }
 function _getPinXY(cid, pi) {
@@ -572,6 +688,7 @@ window.CircuitCanvas = {
   selectPin:      _selectPin,
   clearCanvas:    _clearCanvas,
   getComponents:  function() { return _components; },
+  resetView:      _resetView,
   getWires:       function() { return _wires; },
 };
 

@@ -643,3 +643,11 @@ html, body {
   height: 4px;
   cursor: row-resize;
 }
+
+/* ── Canvas pan/zoom ──────────────────────────────────────────────────────── */
+#circuit-canvas {
+  cursor: default;
+}
+#circuit-canvas.panning {
+  cursor: grabbing !important;
+}
