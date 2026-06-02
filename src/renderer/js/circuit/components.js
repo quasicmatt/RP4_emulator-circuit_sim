@@ -75,12 +75,14 @@ var Resistor = {
 var LED = {
   id:'led', label:'LED', width:3, height:2,
   pins:[{name:'A',gx:0,gy:1},{name:'K',gx:3,gy:1}],
-  defaults:{color:'red', vf:2.0, n:1.8, Is:'4.303e-21', label:'D'},
+  defaults:{color:'red', vf:2.0, n:3.73, Is:'9.32e-11', Rs:'0.042', label:'D'},
   props:[
-    {key:'label', label:'Label',       type:'text'},
-    {key:'color', label:'Color',       type:'select', options:['red','green','yellow','blue','white']},
-    {key:'n',     label:'Emission (n)',type:'number', min:1.0, max:3.0},
-    {key:'Is',    label:'Is (A)',      type:'text'},
+    {key:'label', label:'Label',        type:'text'},
+    {key:'color', label:'Color',        type:'select', options:['red','green','yellow','blue','white']},
+    {key:'vf',    label:'Vf (V)',        type:'number', min:0.5,  max:5.0},
+    {key:'n',     label:'Emission (n)',  type:'number', min:1.0,  max:10.0},
+    {key:'Is',    label:'Is (A)',        type:'text'},
+    {key:'Rs',    label:'Rs (Ω)',        type:'number', min:0.0,  max:10.0},
   ],
   draw: function(ctx, comp) {
     var x=comp.x, y=comp.y, g=GRID, cy=y+g, cx=x+1.5*g;

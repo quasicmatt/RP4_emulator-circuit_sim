@@ -533,19 +533,7 @@ function _showProps(comp, pos) {
     row.appendChild(lbl); row.appendChild(inp); body.appendChild(row);
   });
 
-  // GPIO selector
-  var gr = document.createElement('div'); gr.className = 'prop-row';
-  var gl = document.createElement('label'); gl.className = 'prop-label'; gl.textContent = 'GPIO (BCM)';
-  var gs = document.createElement('select'); gs.className = 'prop-select';
-  var no = document.createElement('option'); no.value=''; no.textContent='— none —'; gs.appendChild(no);
-  var pins = window.PinMap ? window.PinMap.RPI4_PINS : [];
-  pins.forEach(function(p) {
-    var o = document.createElement('option'); o.value=p.bcm; o.textContent='GPIO'+p.bcm;
-    if (comp.connectedBCM === p.bcm) o.selected = true;
-    gs.appendChild(o);
-  });
-  gs.onchange = function() { comp.connectedBCM = gs.value ? parseInt(gs.value) : null; };
-  gr.appendChild(gl); gr.appendChild(gs); body.appendChild(gr);
+  // GPIO BCM selector removed — connection handled via gpiopin component
 
   // Position — convert world coords to screen coords accounting for pan/zoom
   var rect = document.getElementById('canvas-panel').getBoundingClientRect();

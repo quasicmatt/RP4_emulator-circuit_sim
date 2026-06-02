@@ -15,12 +15,14 @@ var VT = 0.02585;
 
 // LED parameters per color: { Is (A), n (emission coeff) }
 // Is calculated so Vf is reached at If=20mA
+// LED default parameters matching reference simulator values.
+// Is=9.32e-11, n=3.73 for all colors — students can adjust per-component.
 var LED_PARAMS = {
-  red:    { Is: 4.303e-21, n: 1.8 }, // Vf~2.0V
-  green:  { Is: 4.303e-28, n: 2.0 }, // Vf~2.2V (modern high-eff)
-  yellow: { Is: 4.303e-23, n: 1.9 }, // Vf~2.1V
-  blue:   { Is: 4.303e-40, n: 2.5 }, // Vf~3.3V
-  white:  { Is: 4.303e-40, n: 2.5 }, // Vf~3.2V (blue pump)
+  red:    { Is: 9.32e-11, n: 3.73 },
+  yellow: { Is: 9.32e-11, n: 3.73 },
+  green:  { Is: 9.32e-11, n: 3.73 },
+  blue:   { Is: 9.32e-11, n: 3.73 },
+  white:  { Is: 9.32e-11, n: 3.73 },
 };
 
 MNASolver.prototype.solve = function(components, wires) {
@@ -147,44 +149,71 @@ MNASolver.prototype.solve = function(components, wires) {
         }
 
         case 'led': {
-         if (na === nb) break;
-          
-          // 1. Fetch properties and fall back to your LED_PARAMS table
+          if (na === nb) break;
+
+          // Parameters — per-component overrides take priority over table defaults
           var color = (c.props && c.props.color) ? c.props.color.toLowerCase() : 'red';
-          var p = LED_PARAMS[color] || LED_PARAMS.red;
-          var nVt = p.n * VT;
-          
-          // 2. Allow custom Vf override, otherwise calculate from params
-          var Vf_l = parseFloat(c.props.vf);
-          // If custom Vf exists, calculate the specific saturation current (Is) to reach 20mA at Vf
-          var Is = isNaN(Vf_l) ? p.Is : (0.02 / Math.exp(Vf_l / nVt));
-          
-          var Vd_l = (c.pins[0]._voltage || 0) - (c.pins[1]._voltage || 0);
-          
-          // 3. Clamp voltage to prevent Newton-Raphson exponential overflow
-          // This safely caps the math around the 100mA forward current mark
-          var max_Vd = nVt * Math.log(0.1 / Is); 
-          if (Vd_l > max_Vd) Vd_l = max_Vd;
-          if (Vd_l < -5) Vd_l = -5; // Clamp reverse voltage breakdown
-          
-          // 4. Shockley Diode Equation
+          var p     = LED_PARAMS[color] || LED_PARAMS.red;
+          var Is    = parseFloat(c.props.Is) || p.Is;
+          var n_led = parseFloat(c.props.n)  || p.n;
+          var Rs    = parseFloat(c.props.Rs);
+          if (isNaN(Rs)) Rs = 0.042; // default 42mΩ series resistance
+          var nVt   = n_led * VT;
+
+          // Total voltage across LED (diode + Rs in series)
+          var Va   = c.pins[0]._voltage || 0;
+          var Vb   = c.pins[1]._voltage || 0;
+          var Vtotal = Va - Vb;
+
+          // FIX 1: Robust local Newton-Raphson sub-loop to find the exact Vd
+          // that satisfies: Vtotal = Vd + Id(Vd) * Rs
+          var Vd_l = c._Vd_prev;
+          if (Vd_l === undefined || isNaN(Vd_l)) {
+            // Warm start guess
+            Vd_l = Vtotal > 0 ? Math.min(Vtotal, 1.5) : 0;
+          }
+
+          for (var localIter = 0; localIter < 20; localIter++) {
+            // Bound Vd_l to avoid extreme exponential overflows during local solving
+            Vd_l = Math.max(-5, Math.min(Vd_l, 3.0));
+            var exp_term = Math.exp(Vd_l / nVt);
+            var Id_local = Is * (exp_term - 1);
+            var Gd_local = (Is / nVt) * exp_term;
+
+            var f = Vd_l + Id_local * Rs - Vtotal;
+            var df = 1.0 + Gd_local * Rs;
+            var delta = f / df;
+
+            // Clamp local step size to guarantee numerical stability
+            var maxStep = 0.1;
+            if (delta > maxStep) delta = maxStep;
+            if (delta < -maxStep) delta = -maxStep;
+
+            Vd_l -= delta;
+            if (Math.abs(delta) < 1e-7) break;
+          }
+          c._Vd_prev = Vd_l; // Save to speed up convergence in the next global iteration
+
+          // Evaluate final diode properties at the true converged local operating point
           var exp_term = Math.exp(Vd_l / nVt);
-          var Id = Is * (exp_term - 1);
+          var Id  = Is * (exp_term - 1);
+          var Gd  = (Is / nVt) * exp_term + 1e-9; // 1nS floor for stability
+
+          // FIX 2: Correct composite companion model formulation
+          // Total equivalent conductance of [Rs + diode] in series
+          var Geq = Gd / (1.0 + Gd * Rs);
           
-          // Linearized conductance (Gd = dId / dVd)
-          var Gd = (Is / nVt) * exp_term;
-          
-          // Add 1 nano-mho to prevent singular matrix errors when the node is floating
-          Gd += 1e-9;
-          
-          // Norton equivalent current source for the passive model
-          var Ieq = Id - Gd * Vd_l;
-          
-          // 5. Stamp the matrix
-          stamp2(na, nb, Gd);
-          if (na > 0) Iv[na-1] -= Ieq;
-          if (nb > 0) Iv[nb-1] += Ieq;
-          
+          // Parallel companion current source flowing from anode to cathode
+          // Derived from: I = Geq * Vtotal + Ieq_total  =>  Ieq_total = Id - Geq * Vtotal
+          var Ieq_total = Id - Geq * Vtotal;
+
+          // Preserve the calculated current for external UI/rendering telemetry
+          c._Id_prev = Id;
+
+          // Stamp into MNA matrix
+          stamp2(na, nb, Geq);
+          if (na > 0) Iv[na-1] -= Ieq_total;
+          if (nb > 0) Iv[nb-1] += Ieq_total;
           break;
         }
 
