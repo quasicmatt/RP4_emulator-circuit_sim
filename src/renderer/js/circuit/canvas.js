@@ -52,6 +52,42 @@ function canvasInit() {
   });
   document.querySelectorAll('.comp-btn').forEach(function(btn) {
     btn.addEventListener('click', function() { _addCompCenter(btn.dataset.component); });
+    
+    // 1. DYNAMIC DRAG REGISTRATION: Programmatically enable HTML5 dragging
+    btn.setAttribute('draggable', 'true');
+    btn.addEventListener('dragstart', function(e) {
+      e.dataTransfer.setData('text/plain', btn.dataset.component);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+  });
+
+  // 2. DROP ZONE LISTENERS: Allow canvas to handle element arrivals
+  _canvas.addEventListener('dragover', function(e) {
+    e.preventDefault(); // CRITICAL: Tells the browser it's legal to drop here
+    e.dataTransfer.dropEffect = 'copy';
+  });
+
+  _canvas.addEventListener('drop', function(e) {
+    e.preventDefault();
+    var typeId = e.dataTransfer.getData('text/plain');
+    if (!typeId) return;
+
+    var reg = window.Components.COMPONENT_REGISTRY;
+    var def = reg[typeId];
+    if (!def) return;
+
+    // Use your built-in _cpos helper to map screen client coordinates directly to virtual space coordinates!
+    var wPos = _cpos(e);
+    
+    // Center the component template body directly under the dropped mouse cursor pointer
+    var x = _snap(wPos.x - (def.width * GRID) / 2);
+    var y = _snap(wPos.y - (def.height * GRID) / 2);
+
+    var c = window.Components.createComponent(typeId, x, y);
+    if (!c) return;
+    _components.push(c);
+    _selectedIds = [c.id];
+    _showProps(c);
   });
   document.getElementById('btn-clear-canvas').addEventListener('click', _clearCanvas);
   document.getElementById('prop-close').addEventListener('click', _hideProps);
@@ -105,9 +141,41 @@ function _draw() {
 }
 
 function _drawGrid() {
-  _ctx.strokeStyle = '#1a2030'; _ctx.lineWidth = 0.5;
-  for (var x = 0; x <= _canvas.width;  x += GRID) { _ctx.beginPath(); _ctx.moveTo(x,0); _ctx.lineTo(x,_canvas.height); _ctx.stroke(); }
-  for (var y = 0; y <= _canvas.height; y += GRID) { _ctx.beginPath(); _ctx.moveTo(0,y); _ctx.lineTo(_canvas.width,y);  _ctx.stroke(); }
+ _ctx.strokeStyle = '#1a2030'; 
+  
+  // FIX: Scale line width dynamically so grid lines don't get 
+  // thick/blurry when zooming in or microscopic when zooming out
+  _ctx.lineWidth = 0.5 / _zoom; 
+  
+  // Calculate the world coordinates of the 4 visible corners of the screen
+  var left   = -_panX / _zoom;
+  var top    = -_panY / _zoom;
+  var right  = (_canvas.width - _panX) / _zoom;
+  var bottom = (_canvas.height - _panY) / _zoom;
+  
+  // Align bounds to the nearest grid step to avoid clipping lines at the edges
+  var startX = Math.floor(left / GRID) * GRID;
+  var endX   = Math.ceil(right / GRID) * GRID;
+  var startY = Math.floor(top / GRID) * GRID;
+  var endY   = Math.ceil(bottom / GRID) * GRID;
+
+  // PERFORMANCE OPTIMIZATION: Open a single path for all grid lines 
+  // instead of calling beginPath() and stroke() inside loops hundreds of times
+  _ctx.beginPath();
+  
+  // Draw visible vertical lines
+  for (var x = startX; x <= endX; x += GRID) { 
+    _ctx.moveTo(x, top); 
+    _ctx.lineTo(x, bottom); 
+  }
+  
+  // Draw visible horizontal lines
+  for (var y = startY; y <= endY; y += GRID) { 
+    _ctx.moveTo(left, y); 
+    _ctx.lineTo(right, y); 
+  }
+  
+  _ctx.stroke();
 }
 
 function _drawWire(w) {
@@ -468,9 +536,17 @@ function _addCompCenter(typeId) {
   var reg = window.Components.COMPONENT_REGISTRY;
   var def = reg[typeId];
   if (!def) { console.error('Unknown component type:', typeId); return; }
+  
   var offset = (_components.length % 6) * GRID;
-  var x = _snap(Math.max(GRID, _canvas.width  / 2 - def.width  * GRID / 2 + offset));
-  var y = _snap(Math.max(GRID, _canvas.height / 2 - def.height * GRID / 2 + offset));
+  
+  // FIX: Calculate the virtual center of the screen based on current pan and zoom vectors
+  var worldCenterX = (_canvas.width / 2 - _panX) / _zoom;
+  var worldCenterY = (_canvas.height / 2 - _panY) / _zoom;
+  
+  // Snap the calculation perfectly onto your circuit grid bounds
+  var x = _snap(worldCenterX - (def.width * GRID) / 2 + offset / _zoom);
+  var y = _snap(worldCenterY - (def.height * GRID) / 2 + offset / _zoom);
+  
   var c = window.Components.createComponent(typeId, x, y);
   if (!c) return;
   _components.push(c);

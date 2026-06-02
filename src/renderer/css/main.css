@@ -332,8 +332,93 @@ html, body {
   padding: 5px 10px;
   background: var(--bg1);
   border-bottom: 1px solid var(--border);
-  overflow-x: auto;
+  
+  /* CHANGE THIS LINE FROM: overflow-x: auto; TO: */
+  overflow: visible; 
+  
   flex-shrink: 0;
+}
+/* Dropdown Wrapper Container */
+.palette-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+/* Style for Category Headers */
+.dropdown-trigger {
+  padding: 4px 10px;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-pri);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease-in-out;
+}
+
+.dropdown-trigger:hover {
+  background: var(--bg3);
+  border-color: var(--border-lit);
+}
+
+/* Hidden Dropdown Menu Box */
+.dropdown-content {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: var(--bg1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  min-width: 150px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+  z-index: 1000; /* Forces menu context above the circuit canvas */
+  flex-direction: column;
+  gap: 2px;
+}
+.dropdown-content::before {
+  content: '';
+  position: absolute;
+  top: -6px;       /* Reaches up through the 4px margin gap to touch the button */
+  left: 0;
+  right: 0;
+  height: 6px;     /* Spans the full height of the gap */
+  background: transparent; /* Totally invisible to the eye, but solid to the mouse */
+}
+
+/* Reveal Menu Box Smoothly on Hover */
+.palette-dropdown:hover .dropdown-content {
+  display: flex;
+}
+
+/* Context Overrides for Buttons when Inside the Dropdown */
+.dropdown-content .comp-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 5px 10px;
+  border-radius: calc(var(--radius-sm) - 1px);
+}
+
+/* Dropdown Item Hover States */
+.dropdown-content .comp-btn:hover {
+  background: var(--bg3);
+  border-color: var(--border-lit);
+  color: var(--text-pri);
+}
+
+/* Dropdown Item Click Feedback State */
+.dropdown-content .comp-btn:active {
+  background: rgba(74, 222, 128, 0.1);
+  border-color: var(--green-dim);
+  color: var(--green);
 }
 
 .palette-label {

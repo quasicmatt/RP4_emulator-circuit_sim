@@ -139,22 +139,46 @@
 
     <!-- Component palette -->
     <div id="component-palette">
-      <span class="palette-label">Add component:</span>
+  <span class="palette-label">Add component:</span>
+
+  <div class="palette-dropdown">
+    <button class="dropdown-trigger">Sources ▾</button>
+    <div class="dropdown-content">
+      <button class="comp-btn" data-component="vcc" title="Power Rail">+ VCC</button>
+      <button class="comp-btn" data-component="gnd" title="Ground">⏚ GND</button>
+    </div>
+  </div>
+
+  <div class="palette-dropdown">
+    <button class="dropdown-trigger">Passives ▾</button>
+    <div class="dropdown-content">
       <button class="comp-btn" data-component="resistor"  title="Resistor">⊟ Resistor</button>
-      <button class="comp-btn" data-component="led"       title="LED">◉ LED</button>
       <button class="comp-btn" data-component="capacitor" title="Capacitor">⊤⊥ Cap</button>
       <button class="comp-btn" data-component="switch"    title="Switch">⊶ Switch</button>
-      <button class="comp-btn" data-component="sevenseg"  title="7-Segment Display">▦ 7-Seg</button>
-      <button class="comp-btn" data-component="gpiopin" title="GPIO Pin">⬡ GPIO Pin</button>
-      <button class="comp-btn" data-component="hc374" title="MM74HC374 Octal D Flip-Flop">◫ 74HC374</button>
-      <button class="comp-btn" data-component="keypad4x4" title="4x4 Matrix Keypad">⌨ Keypad</button>
-      <button class="comp-btn" data-component="npn_bjt" title="BC547 NPN Transistor">⊿ NPN BJT</button>
-      <button class="comp-btn" data-component="nmos" title="IRFZ34 N-Channel MOSFET">⊿ N-MOS</button>
-      <button class="comp-btn" data-component="pmos" title="IRF4905 P-Channel MOSFET">⊿ P-MOS</button>
-      <button class="comp-btn" data-component="opamp741" title="LM741 Op-Amp">△ LM741</button>
-      <button class="comp-btn" data-component="vcc"       title="Power Rail">+ VCC</button>
-      <button class="comp-btn" data-component="gnd"       title="Ground">⏚ GND</button>
     </div>
+  </div>
+
+  <div class="palette-dropdown">
+    <button class="dropdown-trigger">Actives ▾</button>
+    <div class="dropdown-content">
+      <button class="comp-btn" data-component="led"       title="LED">◉ LED</button>
+      <button class="comp-btn" data-component="npn_bjt"   title="BC547 NPN Transistor">⊿ NPN BJT</button>
+      <button class="comp-btn" data-component="nmos"      title="IRFZ34 N-Channel MOSFET">⊿ N-MOS</button>
+      <button class="comp-btn" data-component="pmos"      title="IRF4905 P-Channel MOSFET">⊿ P-MOS</button>
+      <button class="comp-btn" data-component="opamp741"  title="LM741 Op-Amp">△ LM741</button>
+    </div>
+  </div>
+
+  <div class="palette-dropdown">
+    <button class="dropdown-trigger">Digital & I/O ▾</button>
+    <div class="dropdown-content">
+      <button class="comp-btn" data-component="gpiopin"   title="GPIO Pin">⬡ GPIO Pin</button>
+      <button class="comp-btn" data-component="hc374"     title="MM74HC374 Octal D Flip-Flop">◫ 74HC374</button>
+      <button class="comp-btn" data-component="sevenseg"  title="7-Segment Display">▦ 7-Seg</button>
+      <button class="comp-btn" data-component="keypad4x4" title="4x4 Matrix Keypad">⌨ Keypad</button>
+    </div>
+  </div>
+</div>
 
     <canvas id="circuit-canvas"></canvas>
 
